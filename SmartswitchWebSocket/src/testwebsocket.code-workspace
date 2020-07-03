@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"name": "SmartswitchWebSocket",
+			"path": "/home/denis/Documents/PlatformIO/Projects/SmartswitchWebSocket"
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"*.tcc": "cpp"
+		}
+	}
+}

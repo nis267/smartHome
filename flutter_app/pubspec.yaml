@@ -11,7 +11,7 @@ dependencies:
   socket_io_client: ^0.9.4
   flutter_simple_dependency_injection: ^1.0.1
   http: ^0.12.0+4
-  flutter_secure_storage: ^3.3.2
+  flutter_secure_storage: ^3.3.3
 
 dev_dependencies:
   flutter_test:
