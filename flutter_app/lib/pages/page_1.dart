@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_login_demo/models/device.dart';
-import 'package:flutter_login_demo/services/authentication.dart';
+import 'package:flutter_app/models/device.dart';
+import 'package:flutter_app/services/authentication.dart';
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter_login_demo/services/http_request.dart';
+import 'package:flutter_app/services/http_request.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class Page1 extends StatefulWidget {

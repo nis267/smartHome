@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter_login_demo/services/http_request.dart';
-import 'package:flutter_login_demo/models/user.dart';
+import 'package:flutter_app/services/http_request.dart';
+import 'package:flutter_app/models/user.dart';
 
 class RestDatasource {
   NetworkUtil _netUtil = new NetworkUtil();

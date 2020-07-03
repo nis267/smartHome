@@ -18,7 +18,7 @@
       <change beforePath="$PROJECT_DIR$/android/build.gradle" beforeDir="false" afterPath="$PROJECT_DIR$/android/build.gradle" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/android/gradle.properties" beforeDir="false" afterPath="$PROJECT_DIR$/android/gradle.properties" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/android/gradle/wrapper/gradle-wrapper.properties" beforeDir="false" afterPath="$PROJECT_DIR$/android/gradle/wrapper/gradle-wrapper.properties" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/flutter_login_demo.iml" beforeDir="false" afterPath="$PROJECT_DIR$/flutter_login_demo.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/flutter_app.iml" beforeDir="false" afterPath="$PROJECT_DIR$/flutter_app.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ios/Podfile.lock" beforeDir="false" afterPath="$PROJECT_DIR$/ios/Podfile.lock" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/pages/login_signup_page.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/pages/login_signup_page.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/services/authentication.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/services/authentication.dart" afterDir="false" />
@@ -196,40 +196,40 @@
         <subPane>
           <expand>
             <path>
-              <item name="flutter_login_demo" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flutter_login_demo" type="462c0819:PsiDirectoryNode" />
+              <item name="flutter_app" type="b2602c69:ProjectViewProjectNode" />
+              <item name="flutter_app" type="462c0819:PsiDirectoryNode" />
             </path>
             <path>
-              <item name="flutter_login_demo" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flutter_login_demo" type="462c0819:PsiDirectoryNode" />
+              <item name="flutter_app" type="b2602c69:ProjectViewProjectNode" />
+              <item name="flutter_app" type="462c0819:PsiDirectoryNode" />
               <item name="android" type="462c0819:PsiDirectoryNode" />
             </path>
             <path>
-              <item name="flutter_login_demo" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flutter_login_demo" type="462c0819:PsiDirectoryNode" />
+              <item name="flutter_app" type="b2602c69:ProjectViewProjectNode" />
+              <item name="flutter_app" type="462c0819:PsiDirectoryNode" />
               <item name="android" type="462c0819:PsiDirectoryNode" />
               <item name="app" type="462c0819:PsiDirectoryNode" />
             </path>
             <path>
-              <item name="flutter_login_demo" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flutter_login_demo" type="462c0819:PsiDirectoryNode" />
+              <item name="flutter_app" type="b2602c69:ProjectViewProjectNode" />
+              <item name="flutter_app" type="462c0819:PsiDirectoryNode" />
               <item name="lib" type="462c0819:PsiDirectoryNode" />
             </path>
             <path>
-              <item name="flutter_login_demo" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flutter_login_demo" type="462c0819:PsiDirectoryNode" />
+              <item name="flutter_app" type="b2602c69:ProjectViewProjectNode" />
+              <item name="flutter_app" type="462c0819:PsiDirectoryNode" />
               <item name="lib" type="462c0819:PsiDirectoryNode" />
               <item name="models" type="462c0819:PsiDirectoryNode" />
             </path>
             <path>
-              <item name="flutter_login_demo" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flutter_login_demo" type="462c0819:PsiDirectoryNode" />
+              <item name="flutter_app" type="b2602c69:ProjectViewProjectNode" />
+              <item name="flutter_app" type="462c0819:PsiDirectoryNode" />
               <item name="lib" type="462c0819:PsiDirectoryNode" />
               <item name="pages" type="462c0819:PsiDirectoryNode" />
             </path>
             <path>
-              <item name="flutter_login_demo" type="b2602c69:ProjectViewProjectNode" />
-              <item name="flutter_login_demo" type="462c0819:PsiDirectoryNode" />
+              <item name="flutter_app" type="b2602c69:ProjectViewProjectNode" />
+              <item name="flutter_app" type="462c0819:PsiDirectoryNode" />
               <item name="lib" type="462c0819:PsiDirectoryNode" />
               <item name="services" type="462c0819:PsiDirectoryNode" />
             </path>

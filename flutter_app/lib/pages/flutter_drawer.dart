@@ -1,8 +1,8 @@
 
-import 'package:flutter_login_demo/pages/page_1.dart';
-import 'package:flutter_login_demo/pages/page_2.dart';
+import 'package:flutter_app/pages/page_1.dart';
+import 'package:flutter_app/pages/page_2.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_login_demo/services/authentication.dart';
+import 'package:flutter_app/services/authentication.dart';
 
 class Home extends StatefulWidget {
   Home({Key key, this.auth, this.userId, this.logoutCallback})

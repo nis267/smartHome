@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_login_demo/services/authentication.dart';
-import 'package:flutter_login_demo/pages/root_page.dart';
+import 'package:flutter_app/services/authentication.dart';
+import 'package:flutter_app/pages/root_page.dart';
 import 'package:flutter_simple_dependency_injection/injector.dart';
-import 'package:flutter_login_demo/services/dependency_injection.dart';
-import 'package:flutter_login_demo/services/app_initializer.dart';
+import 'package:flutter_app/services/dependency_injection.dart';
+import 'package:flutter_app/services/app_initializer.dart';
 
 
 Injector injector;
