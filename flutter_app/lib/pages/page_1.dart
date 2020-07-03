@@ -46,16 +46,18 @@ class _Page1State extends State<Page1> {
       body: FutureBuilder<List<Device>>(
         future: widget.auth.getDeviceModelData(),
         builder: (context, snapshot) {
+          print("snapshot: ");
+          print(snapshot.hasData);
           if (!snapshot.hasData) return Center(child: CircularProgressIndicator());
 
           return ListView(
             children: snapshot.data
                 .map((device) => ListTile(
-                      title: Text(device.name),
+                      title: Text(device.name == null ? "" : device.name),
                       subtitle: Text(device.macAddress),
                       leading: CircleAvatar(
                         backgroundColor: Colors.red,
-                        child: Text(device.name[0],
+                        child: Text(device.name == null ? "" : device.name,
                             style: TextStyle(
                               fontSize: 18.0,
                               color: Colors.white,

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+// import 'dart:html';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_app/models/device.dart';
@@ -7,8 +8,6 @@ import 'package:flutter_app/models/user.dart';
 import 'package:flutter_app/services/socket.dart';
 import 'package:flutter_simple_dependency_injection/injector.dart';
 import 'package:flutter_app/services/http_request.dart';
-
-
 import 'package:flutter_simple_dependency_injection/injector.dart';
 import 'package:flutter_app/services/dependency_injection.dart';
 import 'package:flutter_app/services/app_initializer.dart';
@@ -124,18 +123,22 @@ class Auth implements BaseAuth {
     return user;
   }
 
+
+
+
+  List<Device> parseDevices(String responseBody) {
+  final parsed = jsonDecode(responseBody).cast<Map<String, dynamic>>();
+
+  return parsed.map<Device>((json) => Device.fromJson(json)).toList();
+}
+
   Future<List<Device>> getDeviceModelData() async {
-    // var dbClient = await db;
-    // String sql;
-    // sql = "SELECT * FROM user";
+
     print("host: ");
     print(_host);
-    final userUrl = "http://192.168.0.143:8080/devices";
+    final userUrl = "http://$_host:8080/devices";
     final json = await getJsonFromJWT(await storage.read(key: 'token'));
-    // var data = {
-    //   "id": json['uid'],
-    // };
-    // String body = jsonEncode(data);
+
     String token = await storage.read(key: 'token');
     var headers = {
         'Content-Type': 'application/json',
@@ -145,30 +148,14 @@ class Auth implements BaseAuth {
     headers: headers,
     // body: body,
     );
-    print("result: ");
-    print(result);
-    print("result length: ");
-    print(result.length);
 
     if (result.length == 0) return null;
 
-    print("here\n\n\n\n\n\n\n\n\n");
-    List<Device> list = result.map((item) {
-      print("item name");
-      print(item["name"]);
-      item["name"] = "test";
-      item["room_id"] = "test";
-      // return Device.map(item);
-      return item;
-    }).toList();
-    print("\n\n\n\n\n\n\n\n\n\n\n\nresult: ");
-    print(result);
-    print("\n\n\n\n\n\n\n\n\n\n\n\nresult: ");
-    // print(list);
-    return list;
-    // Device device = new Device(result['id'], result['room_id'], result['name'], result['socket_id'], result['mac_address'], result['state']);
+    final parsed = result.cast<Map<String, dynamic>>();
 
-    // return device;
+    List<Device> list = parsed.map<Device>((json) => Device.fromJson(json)).toList();
+
+    return list;
   }
   
   Future<void> signOut() async {
