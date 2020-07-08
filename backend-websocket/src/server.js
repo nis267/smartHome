@@ -223,7 +223,10 @@ const initEngineDevices = (io) => {
             let results = await mysqlQuery('SELECT * FROM device WHERE mac_address = ?', [object.mac]);
             console.log("results: ", results.length);
             if (results.length == 0) {
-                console.log("results after: ", results);
+                console.log("results after here: ", results);
+                console.log("socket id: ", socket.id);
+                console.log("object.mac: ", object.mac);
+                console.log("object.state: ", object.state);
                 results = await mysqlQuery(`INSERT INTO device(room_id, mac_address, socket_id, state) VALUES(NULL, "${object.mac}", "${socket.id}", "${object.state}"`);
                 console.log("results after: ", results);
             } else {
