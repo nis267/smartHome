@@ -227,12 +227,12 @@ const initEngineDevices = (io) => {
                 console.log("socket id: ", socket.id);
                 console.log("object.mac: ", object.mac);
                 console.log("object.state: ", object.state);
-                results = await mysqlQuery(`INSERT INTO device(room_id, mac_address, socket_id, state) VALUES(NULL, "${object.mac}", "${socket.id}", "${object.state}"`);
+                // results = await mysqlQuery(`INSERT INTO device(room_id, mac_address, socket_id, state) VALUES(NULL, "${object.mac}", "${socket.id}", "${object.state}"`);
                 console.log("results after: ", results);
             } else {
                 const results = await mysqlQuery(`UPDATE device SET socket_id = "${socket.id}", state = ${object.state} WHERE mac_address = "${object.mac}"`);
             }
-            io.emit('stateChanged');
+            // io.emit('stateChanged');
         }
         )
     });
