@@ -7,7 +7,7 @@ SocketIoClient socket;
 
 const char* ssid     = "Vodafone-2B0B";
 const char* password = "uL4bbmq46RLLAQmm";
-const char* serverIp = "192.168.0.214";
+const char* serverIp = "192.168.0.64";
 int serverPort = 8080;
 int relais = 0;
 int relaisPin = 5;

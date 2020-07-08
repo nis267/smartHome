@@ -1,18 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/models/device.dart';
-import 'package:flutter_app/services/authentication.dart';
-import 'dart:async';
-import 'dart:convert';
-
-import 'package:flutter_app/services/http_request.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-
 import 'package:flutter_simple_dependency_injection/injector.dart';
 import 'package:flutter_app/services/socket.dart';
 import 'package:flutter_app/services/socket.dart';
+// import 'package:flutter/cupertino.dart';
 
 class Page1 extends StatefulWidget {
-  Page1({Key key, }) : super(key: key);
+  Page1({
+    Key key,
+  }) : super(key: key);
 
   @override
   _Page1State createState() => _Page1State();
@@ -39,31 +35,32 @@ class Page1 extends StatefulWidget {
 // }
 
 class _Page1State extends State<Page1> {
+  bool _lights = false;
   final injector = Injector.getInjector();
   SocketService socketService;
 
   @override
   void initState() {
-  socketService = injector.get<SocketService>();
+    socketService = injector.get<SocketService>();
     socketService.getDeviceModelData();
     super.initState();
   }
 
-
   @override
   void didUpdateWidget(Page1 oldWidget) {
     // if (somethingChanged) {
-      // load();
+    // load();
     // }
+    print("didUpdateWidget");
     super.didUpdateWidget(oldWidget);
   }
 
   @override
-    void dispose() {
-      // socketService.deviceController.close();
-      // print();
-      super.dispose();
-    }
+  void dispose() {
+    // socketService.deviceController.close();
+    // print();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -73,27 +70,24 @@ class _Page1State extends State<Page1> {
       ),
       body: StreamBuilder<List<Device>>(
           stream: socketService.deviceController.stream,
-          // initialData: 2,
           builder: (context, stream) {
-            print("stream: ");
-            print(stream);
             if (!stream.hasData)
               return Center(child: CircularProgressIndicator());
             return ListView(
               children: stream.data
                   .map((device) =>
-                      // ChatItem()
                       ListTile(
+                        trailing: Switch(
+                          value: device.state == 1 ? true : false,
+                          onChanged: (bool value) {
+                            setState(() {
+                              _lights = value;
+                            });
+                          },
+                        ),
                         onTap: () {
-                          print("widget: ");
-                          print(widget);
-                          print("device.state: ");
-                          print(device.state);
-                          // device.state = device.state == 0 ? 1 : 0;
                           if (device.socketId != null)
-                            widget.auth.sendAction(device.socketId, device.state);
-                          // socketService.sendAction(device.socketId, button);
-                          return device;
+                            socketService.sendAction(device.socketId, device.state);
                         },
                         title:
                             Text(device.name == null ? "No name" : device.name),
@@ -102,11 +96,6 @@ class _Page1State extends State<Page1> {
                           backgroundColor: device.socketId != null
                               ? Colors.green
                               : Colors.red,
-                          // child: Text(device.name == null ? "No name" : device.name,
-                          //     style: TextStyle(
-                          //       fontSize: 18.0,
-                          //       color: Colors.white,
-                          //     )),
                         ),
                       ))
                   .toList(),
