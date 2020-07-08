@@ -183,7 +183,7 @@ const initEngineDevices = (io) => {
         // socket.emit('action', 'ON');
         socket.emit('getInit');
 
-        io.emit('deviceConnected');
+        // io.emit('deviceConnected');
 
         socket.on('setUser', async (data) => {
             console.log("jwt: ", jwt.decode(data));
@@ -228,6 +228,7 @@ const initEngineDevices = (io) => {
             } else {
                 const results = await mysqlQuery(`UPDATE device SET socket_id = "${socket.id}", state = ${object.state} WHERE mac_address = "${object.mac}"`);
             }
+            io.emit('stateChanged');
         }
         )
     });
