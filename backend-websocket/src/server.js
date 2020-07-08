@@ -201,6 +201,7 @@ const initEngineDevices = (io) => {
         });
 
         socket.on('state', async (object) => {
+            console.log("state here");
             const result = await mysqlQuery('UPDATE device SET state = ? WHERE mac_address = ?', [object.state, object.mac]);
             io.emit('stateChanged');
         });
