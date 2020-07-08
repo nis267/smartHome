@@ -47,7 +47,7 @@ signOut() async {
     return Scaffold(
 
       appBar: AppBar(
-        title: Text("Drawers demo"),
+        title: Text("SmartHome"),
         actions: <Widget>[
             new FlatButton(
                 child: new Text('Logout',
@@ -109,7 +109,7 @@ signOut() async {
         controller: _pageController,
         onPageChanged: onPageChanged,
         children: <Widget>[
-          Page1(auth: widget.auth,),
+          Page1(),
           Page2(),
         ],
       ),

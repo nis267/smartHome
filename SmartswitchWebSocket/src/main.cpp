@@ -34,12 +34,15 @@ void getInit(const char * payload, size_t length) {
 }
 
 void action(const char * payload, size_t length) {
-  if (!strcmp(payload, "ON") && relaisState == LOW) {
+  Serial.printf("payload: %s\n", payload);
+  
+  Serial.printf("payload atoi: %d\n", atoi(payload));
+  if (atoi(payload) == HIGH && relaisState == LOW) {
     relaisState = !relaisState;
     digitalWrite(relaisPin, relaisState);
     socket.emit("state", buildObject().c_str());
   }
-  else if (!strcmp(payload, "OFF") && relaisState == HIGH) {
+  else if (atoi(payload) == LOW && relaisState == HIGH) {
     relaisState = !relaisState;
     digitalWrite(relaisPin, relaisState);
     socket.emit("state", buildObject().c_str());

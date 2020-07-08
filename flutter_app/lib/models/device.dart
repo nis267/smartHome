@@ -1,10 +1,10 @@
 class Device {
   final int id;
-  final int roomId;
+  int roomId;
   final String socketId;
-  final String name;
+  String name;
   final String macAddress;
-  final int state;
+  int state;
   Device({this.id, this.roomId, this.name, this.socketId, this.macAddress, this.state});
 
   factory Device.fromJson(Map<String, dynamic> json) {

@@ -3,6 +3,7 @@ import 'dart:convert';
 // import 'dart:html';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_app/models/device.dart';
 import 'package:flutter_app/models/user.dart';
 import 'package:flutter_app/services/socket.dart';
@@ -29,10 +30,27 @@ abstract class BaseAuth {
   Future<bool> isEmailVerified();
 
   Future<List<Device>> getDeviceModelData();
+
+  Future<void> sendAction(String socketId, int state);
+}
+
+Future<dynamic> getJsonFromJWT(String token) async {
+  final parts = token.split('.');
+  String normalizedSource = base64Url.normalize(parts[1]);
+  return json.decode(utf8.decode(base64Url.decode(normalizedSource)));
+}
+
+List<Device> parsedDevices(dynamic response) {
+  final parsed = response.cast<Map<String, dynamic>>();
+
+  return parsed.map<Device>((json) => Device.fromJson(json)).toList();
+}
+
+Future<List<Device>> isolateDevices(dynamic response) async {
+  return compute(parsedDevices, response);
 }
 
 class Auth implements BaseAuth {
-  
   final injector = Injector.getInjector();
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
   NetworkUtil _netUtil = new NetworkUtil();
@@ -40,12 +58,6 @@ class Auth implements BaseAuth {
   String _host;
   // Injector injector
   // injector = Injector.getInjector();
-
-  Future<dynamic> getJsonFromJWT(String token) async {
-    final parts = token.split('.');
-    String normalizedSource = base64Url.normalize(parts[1]);
-    return json.decode(utf8.decode(base64Url.decode(normalizedSource)));
-  }
 
   Future<String> signIn(String host, String username, String password) async {
     final SocketService socketService = injector.get<SocketService>();
@@ -58,11 +70,10 @@ class Auth implements BaseAuth {
       "password": password
     });
     await storage.write(key: 'token', value: jwt['token']);
-    if(jwt["error"]) {
-        throw new Exception(jwt["error_msg"]);
-      }
-    if (jwt != null)
-    {
+    if (jwt["error"]) {
+      throw new Exception(jwt["error_msg"]);
+    }
+    if (jwt != null) {
       socketService.createSocketConnection(host, jwt['token']);
     }
     final result = await getJsonFromJWT(await storage.read(key: 'token'));
@@ -72,25 +83,26 @@ class Auth implements BaseAuth {
   Future<String> signUp(String host, String username) async {
     _host = host;
     final loginUrl = "http://" + host + ":8080/signup";
-    
+
     var data = {
       "username": username,
     };
 
     String body = jsonEncode(data);
-    
+
     var headers = {
-        'Content-Type': 'application/json',
+      'Content-Type': 'application/json',
     };
-    final result = await _netUtil.post(loginUrl,
-    headers: headers,
-    body: body,
+    final result = await _netUtil.post(
+      loginUrl,
+      headers: headers,
+      body: body,
     );
-    if(result["error"]) {
-        print('here error');
-        throw new Exception(result["error_msg"]);
-      }
-    
+    if (result["error"]) {
+      print('here error');
+      throw new Exception(result["error_msg"]);
+    }
+
     return 'user.uid'; // TODO
   }
 
@@ -106,34 +118,25 @@ class Auth implements BaseAuth {
     String body = jsonEncode(data);
     String token = await storage.read(key: 'token');
     var headers = {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token'
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token'
     };
-    final result = await _netUtil.post(userUrl,
-    headers: headers,
-    body: body,
+    final result = await _netUtil.post(
+      userUrl,
+      headers: headers,
+      body: body,
     );
     User user;
     if (result != null) {
-      user = new User(result['id'].toString(), result['room_id'], result['name'], result['socket_id']);
-    }
-    else {
+      user = new User(result['id'].toString(), result['room_id'],
+          result['name'], result['socket_id']);
+    } else {
       user = null;
     }
     return user;
   }
 
-
-
-
-  List<Device> parseDevices(String responseBody) {
-  final parsed = jsonDecode(responseBody).cast<Map<String, dynamic>>();
-
-  return parsed.map<Device>((json) => Device.fromJson(json)).toList();
-}
-
   Future<List<Device>> getDeviceModelData() async {
-
     print("host: ");
     print(_host);
     final userUrl = "http://$_host:8080/devices";
@@ -141,23 +144,26 @@ class Auth implements BaseAuth {
 
     String token = await storage.read(key: 'token');
     var headers = {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token'
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token'
     };
-    final result = await _netUtil.post(userUrl,
-    headers: headers,
-    // body: body,
+    final response = await _netUtil.post(
+      userUrl,
+      headers: headers,
+      // body: body,
     );
 
-    if (result.length == 0) return null;
+    if (response.length == 0) return null;
 
-    final parsed = result.cast<Map<String, dynamic>>();
-
-    List<Device> list = parsed.map<Device>((json) => Device.fromJson(json)).toList();
-
-    return list;
+    return isolateDevices(response);
   }
-  
+
+  Future<void> sendAction(String socketId, int state) async {
+    final SocketService socketService = injector.get<SocketService>();
+
+    socketService.sendAction(socketId, state);
+  }
+
   Future<void> signOut() async {
     final SocketService socketService = injector.get<SocketService>();
     storage.delete(key: 'token');

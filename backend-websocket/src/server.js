@@ -180,20 +180,44 @@ const initEngineDevices = (io) => {
 
     io.on('connection', (socket) => {
         console.log('Device connected');
-        socket.emit('action', 'ON');
+        // socket.emit('action', 'ON');
         socket.emit('getInit');
+
+        io.emit('deviceConnected');
+
+        socket.on('setUser', async (data) => {
+            console.log("jwt: ", jwt.decode(data));
+            const user_id = jwt.decode(data).uid;
+            // const user_id = socket.decoded_token.uid;
+            // console.log(`User ${user_id} socket connection`);
+            const results = await mysqlQuery('UPDATE user SET socket_id = ? WHERE id = ?', [socket.id, user_id]);
+        });
+
+        socket.on('setAction', async (object) => {
+            // console.log("action: ", action);
+            const state = object.state == 1 ? 0 : 1;
+            console.log("state: ", state);
+            io.to(object.socket_id).emit('action', state);
+        });
 
         socket.on('state', async (object) => {
             const result = await mysqlQuery('UPDATE device SET state = ? WHERE mac_address = ?', [object.state, object.mac]);
+            io.emit('stateChanged');
         });
 
         socket.on('disconnect', async () => {
-            console.log('Device disconnected');
-            let query = `UPDATE device SET socket_id = NULL WHERE socket_id = "${socket.id}"`;
-            const result = await mysqlQuery('UPDATE device SET socket_id = NULL WHERE socket_id = ?', [socket.id]);
+            let result = await mysqlQuery('UPDATE device SET socket_id = NULL WHERE socket_id = ?', [socket.id]);
+            if (result && result.affectedRows == 0) {
+                result = await mysqlQuery('UPDATE user SET socket_id = NULL WHERE socket_id = ?', [socket.id]);
+            }
+            else {
+                io.emit('deviceDisconnected');
+            }
         })
 
         socket.on('setInit', async (object) => {
+
+            console.log("setInit: ", object);
             const results = await mysqlQuery('SELECT * FROM device WHERE mac_address = ?', [object.mac]);
             if (results.length == 0) {
                 const results = await mysqlQuery(`INSERT INTO device(room_id, mac_address, socket_id, state) VALUES(NULL, "${object.mac}", "${socket.id}", "${object.state}"`);
