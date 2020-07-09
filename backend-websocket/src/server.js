@@ -106,8 +106,6 @@ app.post('/devices', checkToken, async (req, res) => {
     const { id } = body;
 
     const devices = await mysqlQuery('SELECT id, room_id, name, mac_address, state, socket_id FROM device');
-    console.log("devices: ");
-    console.log(devices);
     return res.json(devices);
 });
 
@@ -180,28 +178,21 @@ const initEngineDevices = (io) => {
 
     io.on('connection', (socket) => {
         console.log('Device connected');
-        // socket.emit('action', 'ON');
         socket.emit('getInit');
 
-        // io.emit('deviceConnected');
+        io.emit('deviceConnected');
 
         socket.on('setUser', async (data) => {
-            console.log("jwt: ", jwt.decode(data));
             const user_id = jwt.decode(data).uid;
-            // const user_id = socket.decoded_token.uid;
-            // console.log(`User ${user_id} socket connection`);
             const results = await mysqlQuery('UPDATE user SET socket_id = ? WHERE id = ?', [socket.id, user_id]);
         });
 
         socket.on('setAction', async (object) => {
-            // console.log("action: ", action);
             const state = object.state == 1 ? 0 : 1;
-            console.log("state: ", state);
             io.to(object.socket_id).emit('action', state);
         });
 
         socket.on('state', async (object) => {
-            console.log("state here");
             const result = await mysqlQuery('UPDATE device SET state = ? WHERE mac_address = ?', [object.state, object.mac]);
             io.emit('stateChanged');
         });
@@ -218,22 +209,13 @@ const initEngineDevices = (io) => {
 
         socket.on('setInit', async (object) => {
 
-            console.log("setInit: ", object);
-            console.log("socket id: ", socket.id);
             let results = await mysqlQuery('SELECT * FROM device WHERE mac_address = ?', [object.mac]);
-            console.log("results: ", results.length);
             if (results.length == 0) {
-                console.log("results after here: ", results);
-                console.log("socket id: ", socket.id);
-                console.log("object.mac: ", object.mac);
-                console.log("object.state: ", object.state);
-                // await mysqlQuery()
                 results = await mysqlQuery(`INSERT INTO device(mac_address, socket_id, state) VALUES(?, ?, ?)`, [object.mac, socket.id, object.state]);
-                console.log("results after: ", results);
             } else {
-                const results = await mysqlQuery(`UPDATE device SET socket_id = ?, state = ? WHERE mac_address = ?`, [socket.id, object.state, object.mac]);
+                results = await mysqlQuery(`UPDATE device SET socket_id = ?, state = ? WHERE mac_address = ?`, [socket.id, object.state, object.mac]);
             }
-            // io.emit('stateChanged');
+            io.emit('stateChanged');
         }
         )
     });
