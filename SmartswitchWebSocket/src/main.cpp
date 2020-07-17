@@ -7,7 +7,7 @@ SocketIoClient socket;
 
 const char* ssid     = "Vodafone-2B0B";
 const char* password = "uL4bbmq46RLLAQmm";
-const char* serverIp = "192.168.0.64";
+const char* serverIp = "192.168.0.214";
 int serverPort = 8080;
 int relais = 0;
 int relaisPin = 5;
@@ -34,9 +34,9 @@ void getInit(const char * payload, size_t length) {
 }
 
 void action(const char * payload, size_t length) {
-  Serial.printf("payload: %s\n", payload);
+  // Serial.printf("payload: %s\n", payload);
   
-  Serial.printf("payload atoi: %d\n", atoi(payload));
+  // Serial.printf("payload atoi: %d\n", atoi(payload));
   if (atoi(payload) == HIGH && relaisState == LOW) {
     relaisState = !relaisState;
     digitalWrite(relaisPin, relaisState);
@@ -66,7 +66,7 @@ void setup() {
   }
   Serial.println();
 
-  socket.begin(serverIp, serverPort, "/device/?transport=websocket");
+  socket.begin(serverIp, serverPort, "/smartHome/?transport=websocket");
   socket.on("action", action);
   socket.on("getInit", getInit);
 }

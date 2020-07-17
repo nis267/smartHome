@@ -1,5 +1,6 @@
 import express from 'express';
 import SocketIO from 'socket.io';
+// import connection from '.db.js';
 import connection from './db.js';
 import socketioAuth from 'socketio-auth';
 import jwtAuth from 'socketio-jwt-auth';
@@ -50,11 +51,15 @@ const checkToken = async (req, res, next) => {
 }
 
 const mysqlQuery = (query, replacements) => {
+    try {
     return new Promise(resolve => {
         connection.query(query, replacements, (error, rows, fields) => {
             resolve(JSON.parse(JSON.stringify(rows)));
         })
     });
+} catch (e) {
+    console.log("error: ", e);
+}
 }
 
 app.post('/login', async (req, res) => {
@@ -83,21 +88,23 @@ app.post('/user', checkToken, async (req, res) => {
     return res.json(user[0]);
 });
 
-app.post('/room', checkToken, async (req, res) => {
+app.post('/rooms', checkToken, async (req, res) => {
     console.log("get rooms");
 
-    const room = await mysqlQuery('SELECT name FROM room');
-    if (user.length) {
-        const check = await bcrypt.compareSync(req.body.password, user[0].password);
-        if (!check) {
-            return res.json({ error: true, error_msg: 'Wrong credentials' });
-        }
-    } else {
-        return res.json({ error: true, error_msg: 'Wrong credentials' });
-    }
-    var token = jwt.sign({ uid: user[0].id }, secret, { expiresIn: 86440 });
-    return res.json({ error: false, token: token });
+    // const room = await mysqlQuery('SELECT name FROM room');
+    // if (user.length) {
+    //     const check = await bcrypt.compareSync(req.body.password, user[0].password);
+    //     if (!check) {
+    //         return res.json({ error: true, error_msg: 'Wrong credentials' });
+    //     }
+    // } else {
+    //     return res.json({ error: true, error_msg: 'Wrong credentials' });
+    // }
+    // var token = jwt.sign({ uid: user[0].id }, secret, { expiresIn: 86440 });
+    // return res.json({ error: false, token: token });
     //  resp.render('/home');
+    const rooms = await mysqlQuery('SELECT id, name FROM room');
+    return res.json(rooms);
 });
 
 app.post('/devices', checkToken, async (req, res) => {
@@ -148,7 +155,7 @@ app.post('/signup', async (req, res) => {
     return res.json({ error: false });
 });
 
-connection.query('CREATE TABLE IF NOT EXISTS room(room_id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL)'), function (error, results, fields) {
+connection.query('CREATE TABLE IF NOT EXISTS room(id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL)'), function (error, results, fields) {
     if (error) {
         console.log("error: ", error);
     } else if (results) {
@@ -156,7 +163,7 @@ connection.query('CREATE TABLE IF NOT EXISTS room(room_id INT AUTO_INCREMENT PRI
     }
 };
 
-connection.query('CREATE TABLE IF NOT EXISTS device(id INT AUTO_INCREMENT PRIMARY KEY, room_id INT NULL, name VARCHAR(255), mac_address VARCHAR(17), socket_id VARCHAR(20), state BOOLEAN DEFAULT FALSE, CONSTRAINT fk_room_device FOREIGN KEY(room_id) REFERENCES room (room_id) ON DELETE SET NULL)'), function (error, results, fields) {
+connection.query('CREATE TABLE IF NOT EXISTS device(id INT AUTO_INCREMENT PRIMARY KEY, room_id INT NULL, name VARCHAR(255), mac_address VARCHAR(17), socket_id NVARCHAR(20), state BOOLEAN DEFAULT FALSE, CONSTRAINT fk_room_device FOREIGN KEY(room_id) REFERENCES room (id) ON DELETE SET NULL)'), function (error, results, fields) {
     if (error) {
         // throw error;
         console.log("error: ", error);
@@ -164,7 +171,7 @@ connection.query('CREATE TABLE IF NOT EXISTS device(id INT AUTO_INCREMENT PRIMAR
     }
 };
 
-connection.query('CREATE TABLE IF NOT EXISTS user(id INT AUTO_INCREMENT PRIMARY KEY, room_id INT NULL, name VARCHAR(255) NOT NULL, password VARCHAR(60) NOT NULL, socket_id VARCHAR(20), CONSTRAINT fk_room_user FOREIGN KEY(room_id) REFERENCES room (room_id) ON DELETE SET NULL)', function (error, results, fields) {
+connection.query('CREATE TABLE IF NOT EXISTS user(id INT AUTO_INCREMENT PRIMARY KEY, room_id INT NULL, name VARCHAR(255) NOT NULL, password VARCHAR(60) NOT NULL, socket_id VARCHAR(27), CONSTRAINT fk_room_user FOREIGN KEY(room_id) REFERENCES room (id) ON DELETE SET NULL)', function (error, results, fields) {
     if (error) {
         // throw error;
         console.log("error: ", error);
@@ -174,18 +181,47 @@ connection.query('CREATE TABLE IF NOT EXISTS user(id INT AUTO_INCREMENT PRIMARY 
 
 
 
-const initEngineDevices = (io) => {
+const initEngine = (io) => {
+
+    // const devices_nsp = io.of('/devices');
+    const users_nsp = io.of('/users');
+
+    users_nsp.use(socketioJwt.authorize({
+        secret: secret,
+        handshake: true,
+    }));
+
+    users_nsp.on('connection', async (socket) => {
+        console.log("user connection");
+
+        socket.on('setDeviceNameRoom', async (object) => {
+            const result = await mysqlQuery('UPDATE device SET room_id = ?, name = ? WHERE id = ?', [object.room_id, object.name, object.id]);
+            users_nsp.emit('stateChanged');
+        });
+
+        socket.on('setUser', async (data) => {
+            let user_id = jwt.decode(data).uid;
+
+            const results = await mysqlQuery(`UPDATE user SET socket_id = ? WHERE id = ?`, [socket.id, user_id]);
+        });
+
+        socket.on('setAction', async (object) => {
+            const state = object.state == 1 ? 0 : 1;
+            io.to(object.socket_id).emit('action', state);
+        });
+
+        socket.on('disconnect', async () => {
+            console.log("User disconnect");
+
+            const results = await mysqlQuery('UPDATE user SET socket_id = NULL WHERE socket_id = ?', [socket.id]);
+        });
+    });
 
     io.on('connection', (socket) => {
         console.log('Device connected');
         socket.emit('getInit');
 
-        io.emit('deviceConnected');
-
-        socket.on('setUser', async (data) => {
-            const user_id = jwt.decode(data).uid;
-            const results = await mysqlQuery('UPDATE user SET socket_id = ? WHERE id = ?', [socket.id, user_id]);
-        });
+        users_nsp.emit('stateChanged');
 
         socket.on('setAction', async (object) => {
             const state = object.state == 1 ? 0 : 1;
@@ -194,18 +230,13 @@ const initEngineDevices = (io) => {
 
         socket.on('state', async (object) => {
             const result = await mysqlQuery('UPDATE device SET state = ? WHERE mac_address = ?', [object.state, object.mac]);
-            io.emit('stateChanged');
+            users_nsp.emit('stateChanged');
         });
 
         socket.on('disconnect', async () => {
             let result = await mysqlQuery('UPDATE device SET socket_id = NULL WHERE socket_id = ?', [socket.id]);
-            if (result && result.affectedRows == 0) {
-                result = await mysqlQuery('UPDATE user SET socket_id = NULL WHERE socket_id = ?', [socket.id]);
-            }
-            else {
-                io.emit('deviceDisconnected');
-            }
-        })
+            users_nsp.emit('stateChanged');
+        });
 
         socket.on('setInit', async (object) => {
 
@@ -215,34 +246,13 @@ const initEngineDevices = (io) => {
             } else {
                 results = await mysqlQuery(`UPDATE device SET socket_id = ?, state = ? WHERE mac_address = ?`, [socket.id, object.state, object.mac]);
             }
-            io.emit('stateChanged');
-        }
-        )
-    });
-};
-
-const initEngineUsers = (io) => {
-
-    io.use(socketioJwt.authorize({
-        secret: secret,
-        handshake: true,
-    }));
-
-    io.on('connection', (socket) => {
-        const user_id = socket.decoded_token.uid;
-        console.log(`User ${user_id} socket connection`);
-        const results = mysqlQuery('UPDATE user SET socket_id = ? WHERE id = ?', [socket.id, user_id]);
-
-
-        socket.on('disconnect', (socket) => {
-            console.log("User disconnect");
-            const results = mysqlQuery('UPDATE user SET socket_id = NULL WHERE id = ?', [user_id]);
+            users_nsp.emit('stateChanged');
         });
     });
 };
 
-const ioDevices = new SocketIO(server, {
-    path: '/device',
+const ioEngine = new SocketIO(server, {
+    path: '/smartHome',
     serveClient: false,
     // below are engine.IO options
     pingInterval: 10000,
@@ -250,14 +260,4 @@ const ioDevices = new SocketIO(server, {
     cookie: false,
 });
 
-const ioUsers = new SocketIO(server, {
-    path: '/user',
-    serveClient: false,
-    // below are engine.IO options
-    pingInterval: 10000,
-    pingTimeout: 5000,
-    cookie: false,
-});
-
-initEngineDevices(ioDevices);
-initEngineUsers(ioUsers);
+initEngine(ioEngine);

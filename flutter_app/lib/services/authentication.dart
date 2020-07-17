@@ -29,7 +29,7 @@ abstract class BaseAuth {
 
   Future<bool> isEmailVerified();
 
-  Future<List<Device>> getDeviceModelData();
+  // Future<List<Device>> getDeviceModelData();
 
   Future<void> sendAction(String socketId, int state);
 }
@@ -136,27 +136,27 @@ class Auth implements BaseAuth {
     return user;
   }
 
-  Future<List<Device>> getDeviceModelData() async {
-    print("host: ");
-    print(_host);
-    final userUrl = "http://$_host:8080/devices";
-    final json = await getJsonFromJWT(await storage.read(key: 'token'));
+  // Future<List<Device>> getDeviceModelData() async {
+  //   print("host: ");
+  //   print(_host);
+  //   final userUrl = "http://$_host:8080/devices";
+  //   final json = await getJsonFromJWT(await storage.read(key: 'token'));
 
-    String token = await storage.read(key: 'token');
-    var headers = {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token'
-    };
-    final response = await _netUtil.post(
-      userUrl,
-      headers: headers,
-      // body: body,
-    );
+  //   String token = await storage.read(key: 'token');
+  //   var headers = {
+  //     'Content-Type': 'application/json',
+  //     'Authorization': 'Bearer $token'
+  //   };
+  //   final response = await _netUtil.post(
+  //     userUrl,
+  //     headers: headers,
+  //     // body: body,
+  //   );
 
-    if (response.length == 0) return null;
+  //   if (response.length == 0) return null;
 
-    return isolateDevices(response);
-  }
+  //   return isolateDevices(response);
+  // }
 
   Future<void> sendAction(String socketId, int state) async {
     final SocketService socketService = injector.get<SocketService>();
