@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_simple_dependency_injection/injector.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 // import 'package:tiche_flutter/config.dart';
@@ -37,7 +38,7 @@ class SocketService {
   // Injector.getInjector()
   
   StreamController<List<Device>> deviceController = StreamController.broadcast();
-  // Stream<List<Device>> get stream => deviceController.stream;
+  Stream<List<Device>> get stream => deviceController.stream;
 
   final storage = new FlutterSecureStorage();
 
@@ -70,6 +71,7 @@ class SocketService {
     this.socket.on("disconnect", (_) => {
       print('Disconnected'),
       storage.delete(key: 'token'),
+      // SystemNavigator.pop()
       });
 
     // this.socket.on("deviceDisconnected", (_) => {
@@ -100,10 +102,11 @@ class SocketService {
   }
 
   setDeviceNameRoom(int id, String roomName, int roomId) {
-    print("roomdId: ");
-    print(roomId);
-
     socket.emit('setDeviceNameRoom', {'id': id, 'name': roomName, 'room_id': roomId});
+  }
+
+  setUserRoom(Room room) {
+    socket.emit('setUserRoom', {'room_name': room.name, 'room_id': room.id});
   }
 
   getDeviceModelData(int roomId) async {
@@ -126,14 +129,7 @@ class SocketService {
     if (response.length == 0) return null;
 
     List<Device> devices = await isolateDevices(response);
-    // if ()
-    print("devices: ");
-    print(devices);
     deviceController.add(devices);
-    // deviceController.addError({'error': 'no data'});
-    // deviceController.close();
-    // deviceController.done;
-    // deviceController.
   }
 
   Future<List<Room>> getRoomModelData() async {

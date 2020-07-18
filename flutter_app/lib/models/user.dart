@@ -1,6 +1,6 @@
 class User {
   String _id;
-  String _roomId;
+  int _roomId;
   String _socketId;
   String _username;
   User(this._id, this._roomId, this._username, this._socketId);
@@ -13,7 +13,7 @@ class User {
   }
 
   String get uid => _id;
-  String get roomId => _roomId;
+  int get roomId => _roomId;
   String get socketId => _socketId;
   String get username => _username;
 

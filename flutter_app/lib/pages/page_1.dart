@@ -48,6 +48,8 @@ class _Page1State extends State<RoomPage> {
   void initState() {
     socketService = injector.get<SocketService>();
     print("hereeeeee");
+    // print(widget.room.name);
+    socketService.setUserRoom(widget.room);
     socketService.getDeviceModelData(widget.room.id);
     socketService.getRoomModelData().then((value) => {
           setState(() {
@@ -184,78 +186,9 @@ class _Page1State extends State<RoomPage> {
           )
               ]
           )
-
-
-
-          //   actions: 
-          //   <Widget>[
-          //     Row(
-          //       // mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          //       children: <Widget>[
-          //     MaterialButton(
-          //       elevation: 5.0,
-          //       child: Text('Cancel'),
-          //       onPressed: () {
-          //         Navigator.of(context).pop();
-          //       },
-          //     ),
-          //     MaterialButton(
-          //       elevation: 5.0,
-          //       child: Text('Submit'),
-          //       onPressed: () {
-          //         final form = _formKey.currentState;
-          //         if (form.validate()) {
-          //           form.save();
-          //           // List<String>['ergerg', 'eghergerg'];
-          //           Navigator.of(context).pop([
-          //             currentSelectedName.toString(),
-          //             currentSelectedRoom.id.toInt()
-          //           ]);
-          //           // Navigator.of(context).pop(currentSelectedName.toString());
-          //         }
-          //       },
-          //     )
-          //       ]
-          // )
-          //   ],
-
-
-
           );
         });
   }
-
-  // Widget showDropDownRooms(BuildContext context) {
-  //   return Padding(
-  //       padding: const EdgeInsets.fromLTRB(0.0, 15.0, 0.0, 0.0),
-  //       // child: DropdownButtonHideUnderline(
-  //       child: DropdownButton<String>(
-  //         onTap: () {
-  //           FocusScope.of(context).unfocus();
-  //           // customController.clear();
-  //           // customController.dispose();
-  //           // customController.hasListeners
-  //           // print("hereeeee");
-  //         },
-  //         hint: Text('Select Room'),
-  //         value: currentSelectedRoom,
-  //         onChanged: (String newValue) {
-  //           // currentSelectedRoom = newValue;
-  //           setState(() {
-  //             currentSelectedRoom = newValue;
-  //           });
-  //           print("currentSelectedRoom: " + currentSelectedRoom);
-  //         },
-  //         isExpanded: true,
-  //         items: _dropdownValues
-  //             .map((value) => DropdownMenuItem(
-  //                   child: Text(value),
-  //                   value: value,
-  //                 ))
-  //             .toList(),
-  //       ));
-  //   // );
-  // }
 
   Widget showNameInput() {
     return Padding(
@@ -284,14 +217,11 @@ class _Page1State extends State<RoomPage> {
         title: Text(widget.room.name),
       ),
       body: StreamBuilder<List<Device>>(
-          stream: socketService.deviceController.stream,
+          stream: socketService.stream,
+          initialData: <Device>[],
           builder: (context, stream) {
-            print("data: ");
-            print(stream.data);
-            print("stream over: ");
-            print(stream.connectionState);
-            if (!stream.hasData)
-              return Center(child: CircularProgressIndicator());
+            // if (!stream.hasData)
+              // return Center(child: CircularProgressIndicator());
             return ListView(
               children: stream.data
                   .map((device) => ListTile(
@@ -306,12 +236,9 @@ class _Page1State extends State<RoomPage> {
                         onLongPress: () {
                           createDialogWindow(context, device.name, device.roomId)
                               .then((onValue) {
-                            print("hereee");
-                            print(onValue);
                             if (onValue != null)
                             socketService.setDeviceNameRoom(
                                 device.id, onValue[0], onValue[1]);
-                            print("hereee aggainnnn");
                           });
                         },
                         onTap: () {
@@ -337,6 +264,14 @@ class _Page1State extends State<RoomPage> {
                   .toList(),
             );
           }),
+          floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          print("button pressed");
+
+        },
+        tooltip: 'Add device',
+        child: Icon(Icons.add),
+      ),
     );
   }
 }

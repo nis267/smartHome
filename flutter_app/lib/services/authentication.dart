@@ -128,35 +128,15 @@ class Auth implements BaseAuth {
     );
     User user;
     if (result != null) {
-      user = new User(result['id'].toString(), result['room_id'],
+      print("result: ");
+      print(result);
+      user = new User(result['id'].toString(), result['room_id'] == null ? 0 : result['room_id'],
           result['name'], result['socket_id']);
     } else {
       user = null;
     }
     return user;
   }
-
-  // Future<List<Device>> getDeviceModelData() async {
-  //   print("host: ");
-  //   print(_host);
-  //   final userUrl = "http://$_host:8080/devices";
-  //   final json = await getJsonFromJWT(await storage.read(key: 'token'));
-
-  //   String token = await storage.read(key: 'token');
-  //   var headers = {
-  //     'Content-Type': 'application/json',
-  //     'Authorization': 'Bearer $token'
-  //   };
-  //   final response = await _netUtil.post(
-  //     userUrl,
-  //     headers: headers,
-  //     // body: body,
-  //   );
-
-  //   if (response.length == 0) return null;
-
-  //   return isolateDevices(response);
-  // }
 
   Future<void> sendAction(String socketId, int state) async {
     final SocketService socketService = injector.get<SocketService>();
