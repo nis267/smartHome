@@ -34,9 +34,6 @@ void getInit(const char * payload, size_t length) {
 }
 
 void action(const char * payload, size_t length) {
-  // Serial.printf("payload: %s\n", payload);
-  
-  // Serial.printf("payload atoi: %d\n", atoi(payload));
   if (atoi(payload) == HIGH && relaisState == LOW) {
     relaisState = !relaisState;
     digitalWrite(relaisPin, relaisState);
@@ -49,16 +46,8 @@ void action(const char * payload, size_t length) {
   }
 }
 
-void setup() {
-  Serial.begin(115200);         // Start the Serial communication to send messages to the computer
-  delay(1000);
-  // Serial.setDebugOutput(true);
-  Serial.println('\n');
+void WiFi_login() {
   WiFi.begin(ssid, password);             // Connect to the network
-  Serial.print("Connecting to ");
-  Serial.print(ssid); Serial.println(" ...");
-  pinMode(relaisPin, OUTPUT);
-
   int i = 0;
   while (WiFi.status() != WL_CONNECTED) { // Wait for the Wi-Fi to connect
     delay(1000);
@@ -71,7 +60,20 @@ void setup() {
   socket.on("getInit", getInit);
 }
 
+void setup() {
+  Serial.begin(115200);         // Start the Serial communication to send messages to the computer
+  delay(1000);
+  // Serial.setDebugOutput(true);
+  Serial.print(ssid); Serial.println(" ...");
+  pinMode(relaisPin, OUTPUT);
+  WiFi_login();
+}
+
 void loop() {
   // put your main code here, to run repeatedly:
+  if (WiFi.status() != WL_CONNECTED) { //Reconnect to WiFi if connection lost
+    Serial.println("reconnect to wifi");
+    WiFi_login();
+  }
   socket.loop();
 }

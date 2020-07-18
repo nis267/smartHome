@@ -4,14 +4,14 @@ import 'package:flutter_app/models/device.dart';
 import 'package:flutter_app/models/room.dart';
 import 'package:flutter_simple_dependency_injection/injector.dart';
 import 'package:flutter_app/services/socket.dart';
-import 'package:flutter_app/services/socket.dart';
-import 'dart:convert';
 // import 'package:flutter/cupertino.dart';
 
-class Page1 extends StatefulWidget {
-  Page1({
-    Key key,
+class RoomPage extends StatefulWidget {
+  RoomPage({
+    Key key, this.room
   }) : super(key: key);
+
+  final Room room;
 
   @override
   _Page1State createState() => _Page1State();
@@ -37,7 +37,7 @@ class Page1 extends StatefulWidget {
 //   }
 // }
 
-class _Page1State extends State<Page1> {
+class _Page1State extends State<RoomPage> {
   final injector = Injector.getInjector();
   SocketService socketService;
 
@@ -47,7 +47,8 @@ class _Page1State extends State<Page1> {
   @override
   void initState() {
     socketService = injector.get<SocketService>();
-    socketService.getDeviceModelData();
+    print("hereeeeee");
+    socketService.getDeviceModelData(widget.room.id);
     socketService.getRoomModelData().then((value) => {
           setState(() {
             _roomList = value;
@@ -57,8 +58,8 @@ class _Page1State extends State<Page1> {
   }
 
   @override
-  void didUpdateWidget(Page1 oldWidget) {
-    socketService.getDeviceModelData();
+  void didUpdateWidget(RoomPage oldWidget) {
+    // socketService.getDeviceModelData(widget.room.id);
     // if (somethingChanged) {
     // load();
     // }
@@ -73,23 +74,24 @@ class _Page1State extends State<Page1> {
     super.dispose();
   }
 
-  List<String> _dropdownValues = ["One", "Two", "Three", "Four", "Five"];
   Room currentSelectedRoom;
   String currentSelectedName;
   List<String> settings = new List(2);
 
   final _formKey = new GlobalKey<FormState>();
 
-  Future<List<dynamic>> createDialogWindow(
-      BuildContext conetxt, String name) async {
+  void getCurrentRoom(int roomId) {
+    int i;
+    for (i = 0; i < _roomList.length; i++) {
+      if (_roomList[i].id == roomId) {
+        currentSelectedRoom = _roomList[i];
+      }
+    }
+  }
+
+  Future<List<dynamic>> createDialogWindow(BuildContext conetxt, String name, int roomId) async {
     currentSelectedName = name;
-
-    // _dropdownValues = []
-    print("rooms: ");
-    // _rooms = await socketService.getRoomModelData();
-    // print(json.encode(_rooms));
-    // _rooms.map((e) => {print("e: "), print(e)});
-
+    getCurrentRoom(roomId);
     return await showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -116,16 +118,7 @@ class _Page1State extends State<Page1> {
                                     new Padding(
                                       padding: const EdgeInsets.fromLTRB(
                                           0.0, 15.0, 0.0, 0.0),
-                                      child:
-                                          // FutureBuilder(
-                                          // future: socketService.getRoomModelData(),
-                                          // builder: (context, snapshot) {
-                                          // if (snapshot.hasError)
-                                          //   return Text(snapshot.error);
-
-                                          // if (snapshot.hasData) {
-                                          //   return
-                                          new DropdownButtonFormField(
+                                      child: new DropdownButtonFormField(
                                         onTap: () {
                                           FocusScope.of(context).unfocus();
                                         },
@@ -139,8 +132,6 @@ class _Page1State extends State<Page1> {
                                           setState(() {
                                             currentSelectedRoom = newValue;
                                           });
-                                          print("currentSelectedRoom: " +
-                                              currentSelectedRoom.name);
                                         },
                                         isExpanded: true,
                                         items: _roomList
@@ -290,11 +281,15 @@ class _Page1State extends State<Page1> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Fetching data from DB - ListView'),
+        title: Text(widget.room.name),
       ),
       body: StreamBuilder<List<Device>>(
           stream: socketService.deviceController.stream,
           builder: (context, stream) {
+            print("data: ");
+            print(stream.data);
+            print("stream over: ");
+            print(stream.connectionState);
             if (!stream.hasData)
               return Center(child: CircularProgressIndicator());
             return ListView(
@@ -309,7 +304,7 @@ class _Page1State extends State<Page1> {
                           },
                         ),
                         onLongPress: () {
-                          createDialogWindow(context, device.name)
+                          createDialogWindow(context, device.name, device.roomId)
                               .then((onValue) {
                             print("hereee");
                             print(onValue);

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/services/authentication.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginSignupPage extends StatefulWidget {
   LoginSignupPage({this.auth, this.loginCallback});
@@ -13,10 +14,10 @@ class LoginSignupPage extends StatefulWidget {
 
 class _LoginSignupPageState extends State<LoginSignupPage> {
   final _formKey = new GlobalKey<FormState>();
-
-  String _host;
-  String _username;
-  String _password;
+  bool rememberMe = false;
+  final _hostController = TextEditingController();
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
   String _errorMessage;
 
   bool _isLoginForm;
@@ -33,7 +34,9 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
   }
 
   // Perform login or signup
-  void validateAndSubmit() async {
+  void validateAndSubmit(BuildContext context) async {
+    FocusScope.of(context).unfocus();
+    SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
       _errorMessage = "";
       _isLoading = true;
@@ -42,10 +45,12 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
       String userId = "";
       try {
         if (_isLoginForm) {
-          userId = await widget.auth.signIn(_host, _username, _password);
+          userId = await widget.auth.signIn(_hostController.text,
+              _usernameController.text, _passwordController.text);
           print('Signed in: $userId');
         } else {
-          userId = await widget.auth.signUp(_host, _username);
+          userId = await widget.auth
+              .signUp(_hostController.text, _usernameController.text);
           //widget.auth.sendEmailVerification();
           //_showVerifyEmailSentDialog();
           print('Signed up user: $userId');
@@ -68,8 +73,25 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
     }
   }
 
+  void initLoginCredentials() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      bool rememberMeTmp = prefs.getBool('rememberMe');
+      if (rememberMeTmp != null) {
+        rememberMe = rememberMeTmp;
+      }
+      List<String> loginList = prefs.getStringList('login');
+      if (loginList != null) {
+        _hostController.text = loginList[0];
+        _usernameController.text = loginList[1];
+        _passwordController.text = loginList[2];
+      }
+    });
+  }
+
   @override
   void initState() {
+    initLoginCredentials();
     _errorMessage = "";
     _isLoading = false;
     _isLoginForm = true;
@@ -81,10 +103,21 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
     _errorMessage = "";
   }
 
-  void toggleFormMode() {
+  void resetTextControllers() {
+    _hostController.clear();
+    _usernameController.clear();
+    _passwordController.clear();
+  }
+
+  void toggleFormMode(BuildContext context) {
+    FocusScope.of(context).unfocus();
     resetForm();
     setState(() {
       _isLoginForm = !_isLoginForm;
+      resetTextControllers();
+      if (_isLoginForm) {
+        initLoginCredentials();
+      }
     });
   }
 
@@ -96,7 +129,7 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
         ),
         body: Stack(
           children: <Widget>[
-            _showForm(),
+            _showForm(context),
             _showCircularProgress(),
           ],
         ));
@@ -146,7 +179,7 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
   //             showErrorMessage(),
   //   ]);
   // }
-  Widget _showForm() {
+  Widget _showForm(BuildContext context) {
     return new Container(
         padding: EdgeInsets.all(16.0),
         child: new Form(
@@ -158,12 +191,39 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
               showHostInput(),
               showUsernameInput(),
               if (_isLoginForm) showPasswordInput(),
-              showPrimaryButton(),
-              showSecondaryButton(),
+              if (_isLoginForm) showCheckBoxRememberMe(),
+              showPrimaryButton(context),
+              showSecondaryButton(context),
               showErrorMessage(),
             ],
           ),
         ));
+  }
+
+  void _onChangedCheckBoxRememberMe(bool newValue) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      rememberMe = newValue;
+      prefs.setBool("rememberMe", rememberMe);
+      if (rememberMe == true) {
+        prefs.setStringList('login', [_hostController.text, _usernameController.text, _passwordController.text]);
+      }
+      else {
+        prefs.clear();
+      }
+    });
+  }
+
+  Widget showCheckBoxRememberMe() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0.0, 15.0, 0.0, 0.0),
+      child: new CheckboxListTile(
+        title: Text("Remember me"),
+        value: rememberMe,
+        onChanged: _onChangedCheckBoxRememberMe,
+        controlAffinity: ListTileControlAffinity.leading,
+      ),
+    );
   }
 
   Widget showErrorMessage() {
@@ -201,6 +261,7 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(0.0, 100.0, 0.0, 0.0),
       child: new TextFormField(
+        controller: _hostController,
         maxLines: 1,
         keyboardType: TextInputType.text,
         autofocus: false,
@@ -211,7 +272,6 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
               color: Colors.grey,
             )),
         validator: (value) => value.isEmpty ? 'Host can\'t be empty' : null,
-        onSaved: (value) => _host = value.trim(),
       ),
     );
   }
@@ -220,6 +280,7 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(0.0, 15.0, 0.0, 0.0),
       child: new TextFormField(
+        controller: _usernameController,
         maxLines: 1,
         keyboardType: TextInputType.text,
         autofocus: false,
@@ -230,7 +291,6 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
               color: Colors.grey,
             )),
         validator: (value) => value.isEmpty ? 'Username can\'t be empty' : null,
-        onSaved: (value) => _username = value.trim(),
       ),
     );
   }
@@ -239,6 +299,7 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(0.0, 15.0, 0.0, 0.0),
       child: new TextFormField(
+        controller: _passwordController,
         maxLines: 1,
         obscureText: true,
         autofocus: false,
@@ -249,20 +310,22 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
               color: Colors.grey,
             )),
         validator: (value) => value.isEmpty ? 'Password can\'t be empty' : null,
-        onSaved: (value) => _password = value.trim(),
       ),
     );
   }
 
-  Widget showSecondaryButton() {
+  Widget showSecondaryButton(BuildContext context) {
     return new FlatButton(
         child: new Text(
             _isLoginForm ? 'Create an account' : 'Have an account? Sign in',
             style: new TextStyle(fontSize: 18.0, fontWeight: FontWeight.w300)),
-        onPressed: toggleFormMode);
+        onPressed: () 
+        {
+          toggleFormMode(context);
+        });
   }
 
-  Widget showPrimaryButton() {
+  Widget showPrimaryButton(BuildContext context) {
     return new Padding(
         padding: EdgeInsets.fromLTRB(0.0, 45.0, 0.0, 0.0),
         child: SizedBox(
@@ -274,7 +337,9 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
             color: Colors.blue,
             child: new Text(_isLoginForm ? 'Login' : 'Create account',
                 style: new TextStyle(fontSize: 20.0, color: Colors.white)),
-            onPressed: validateAndSubmit,
+            onPressed: () {
+              validateAndSubmit(context);
+              },
           ),
         ));
   }

@@ -107,12 +107,14 @@ app.post('/rooms', checkToken, async (req, res) => {
     return res.json(rooms);
 });
 
-app.post('/devices', checkToken, async (req, res) => {
-    console.log("getDevices");
+app.post('/devices/:roomId', checkToken, async (req, res) => {
+    console.log("getDevicesId: ", req.params.roomId);
+    const roomId = req.params.roomId;
     const { body } = req;
     const { id } = body;
 
-    const devices = await mysqlQuery('SELECT id, room_id, name, mac_address, state, socket_id FROM device');
+    const devices = await mysqlQuery('SELECT id, room_id, name, mac_address, state, socket_id FROM device WHERE room_id = ?', [roomId]);
+    console.log("devices: ", devices);
     return res.json(devices);
 });
 
@@ -196,7 +198,8 @@ const initEngine = (io) => {
 
         socket.on('setDeviceNameRoom', async (object) => {
             const result = await mysqlQuery('UPDATE device SET room_id = ?, name = ? WHERE id = ?', [object.room_id, object.name, object.id]);
-            users_nsp.emit('stateChanged');
+            console.log("result.room_id0: ", object.room_id);
+            users_nsp.emit('stateChanged', object.room_id);
         });
 
         socket.on('setUser', async (data) => {
@@ -221,7 +224,7 @@ const initEngine = (io) => {
         console.log('Device connected');
         socket.emit('getInit');
 
-        users_nsp.emit('stateChanged');
+        // users_nsp.emit('stateChanged');
 
         socket.on('setAction', async (object) => {
             const state = object.state == 1 ? 0 : 1;
@@ -230,23 +233,27 @@ const initEngine = (io) => {
 
         socket.on('state', async (object) => {
             const result = await mysqlQuery('UPDATE device SET state = ? WHERE mac_address = ?', [object.state, object.mac]);
-            users_nsp.emit('stateChanged');
+            console.log("state roomId: ", socket.roomId);
+            users_nsp.emit('stateChanged', socket.roomId);
         });
 
         socket.on('disconnect', async () => {
             let result = await mysqlQuery('UPDATE device SET socket_id = NULL WHERE socket_id = ?', [socket.id]);
-            users_nsp.emit('stateChanged');
+            users_nsp.emit('stateChanged', socket.roomId);
         });
 
         socket.on('setInit', async (object) => {
 
-            let results = await mysqlQuery('SELECT * FROM device WHERE mac_address = ?', [object.mac]);
+            let results = await mysqlQuery('SELECT * FROM device WHERE mac_address = ? LIMIT 1', [object.mac]);
+            console.log("results: ", results);
+            const roomId = results[0].room_id;
             if (results.length == 0) {
                 results = await mysqlQuery(`INSERT INTO device(mac_address, socket_id, state) VALUES(?, ?, ?)`, [object.mac, socket.id, object.state]);
             } else {
                 results = await mysqlQuery(`UPDATE device SET socket_id = ?, state = ? WHERE mac_address = ?`, [socket.id, object.state, object.mac]);
             }
-            users_nsp.emit('stateChanged');
+            socket.roomId = roomId;
+            users_nsp.emit('stateChanged', socket.roomId);
         });
     });
 };

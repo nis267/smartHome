@@ -77,9 +77,10 @@ class SocketService {
     //   getDeviceModelData()
     // });
 
-    this.socket.on("stateChanged", (_) => {
-      print("stateChanged"),
-      getDeviceModelData()
+    this.socket.on("stateChanged", (roomId) => {
+      print("stateChanged: "),
+      print(roomId),
+      getDeviceModelData(roomId)
     });
 
     // this.socket.on("deviceConnected", (_) => {
@@ -92,8 +93,6 @@ class SocketService {
     // deviceController.close();
     socket.emit('disconnectUser');
     socket.disconnect();
-    print("deviceController: ");
-    print(deviceController);
   }
 
   sendAction(socketId, state) {
@@ -107,8 +106,10 @@ class SocketService {
     socket.emit('setDeviceNameRoom', {'id': id, 'name': roomName, 'room_id': roomId});
   }
 
-  getDeviceModelData() async {
-    final userUrl = "http://$_host:8080/devices";
+  getDeviceModelData(int roomId) async {
+    final userUrl = "http://$_host:8080/devices/$roomId";
+    print("useUrl: ");
+    print(userUrl);
     final json = await getJsonFromJWT(await storage.read(key: 'token'));
 
     String token = await storage.read(key: 'token');
@@ -125,7 +126,14 @@ class SocketService {
     if (response.length == 0) return null;
 
     List<Device> devices = await isolateDevices(response);
+    // if ()
+    print("devices: ");
+    print(devices);
     deviceController.add(devices);
+    // deviceController.addError({'error': 'no data'});
+    // deviceController.close();
+    // deviceController.done;
+    // deviceController.
   }
 
   Future<List<Room>> getRoomModelData() async {
