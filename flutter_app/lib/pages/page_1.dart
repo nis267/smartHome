@@ -40,15 +40,11 @@ class RoomPage extends StatefulWidget {
 class _Page1State extends State<RoomPage> {
   final injector = Injector.getInjector();
   SocketService socketService;
-
-  // List<Room> _rooms;
   List<Room> _roomList = [];
 
   @override
   void initState() {
     socketService = injector.get<SocketService>();
-    print("hereeeeee");
-    // print(widget.room.name);
     socketService.setUserRoom(widget.room);
     socketService.getDeviceModelData(widget.room.id);
     socketService.getRoomModelData().then((value) => {
@@ -65,14 +61,12 @@ class _Page1State extends State<RoomPage> {
     // if (somethingChanged) {
     // load();
     // }
-    print("didUpdateWidget");
     super.didUpdateWidget(oldWidget);
   }
 
   @override
   void dispose() {
-    // socketService.deviceController.close();
-    // print();
+    socketService.leaveUserRoom(widget.room.id);
     super.dispose();
   }
 
@@ -217,11 +211,12 @@ class _Page1State extends State<RoomPage> {
         title: Text(widget.room.name),
       ),
       body: StreamBuilder<List<Device>>(
-          stream: socketService.stream,
-          initialData: <Device>[],
+          stream: socketService.deviceController.stream,
           builder: (context, stream) {
-            // if (!stream.hasData)
-              // return Center(child: CircularProgressIndicator());
+            print("data: ");
+            print(stream.data);
+            if (!stream.hasData)
+              return Center(child: CircularProgressIndicator());
             return ListView(
               children: stream.data
                   .map((device) => ListTile(
@@ -238,7 +233,7 @@ class _Page1State extends State<RoomPage> {
                               .then((onValue) {
                             if (onValue != null)
                             socketService.setDeviceNameRoom(
-                                device.id, onValue[0], onValue[1]);
+                                device.id, onValue[0], onValue[1], widget.room.id);
                           });
                         },
                         onTap: () {

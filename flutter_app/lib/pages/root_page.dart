@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app/Routes/routes.dart';
+import 'package:flutter_app/models/drawer_data.dart';
+import 'package:flutter_app/pages/app_drawer.dart';
+import 'package:flutter_app/pages/home_page.dart';
+import 'package:flutter_app/pages/home_rooms.dart';
 import 'package:flutter_app/pages/login_signup_page.dart';
 import 'package:flutter_app/services/authentication.dart';
 // import 'package:flutter_app/pages/home_page.dart';
-import 'package:flutter_app/pages/flutter_drawer.dart';
 
 enum AuthStatus {
   NOT_DETERMINED,
@@ -22,6 +26,7 @@ class RootPage extends StatefulWidget {
 class _RootPageState extends State<RootPage> {
   AuthStatus authStatus = AuthStatus.NOT_DETERMINED;
   String _userId = "";
+  String _userName = "";
 
   @override
   void initState() {
@@ -30,6 +35,7 @@ class _RootPageState extends State<RootPage> {
       setState(() {
         if (user != null) {
           _userId = user?.uid;
+          _userName = user?.username;
         }
         authStatus =
             user?.uid == null ? AuthStatus.NOT_LOGGED_IN : AuthStatus.LOGGED_IN;
@@ -41,6 +47,7 @@ class _RootPageState extends State<RootPage> {
     widget.auth.getCurrentUser().then((user) {
       setState(() {
         _userId = user.uid.toString();
+        _userName = user.username.toString();
       });
     });
     setState(() {
@@ -52,6 +59,7 @@ class _RootPageState extends State<RootPage> {
     setState(() {
       authStatus = AuthStatus.NOT_LOGGED_IN;
       _userId = "";
+      _userName = "";
     });
   }
 
@@ -78,16 +86,12 @@ class _RootPageState extends State<RootPage> {
         break;
       case AuthStatus.LOGGED_IN:
         if (_userId.length > 0 && _userId != null) {
-          return new Home(
+          return new HomeRoomsPage(
             userId: _userId,
+            userName: _userName,
             auth: widget.auth,
             logoutCallback: logoutCallback,
           );
-          // return new HomePage(
-          //   userId: _userId,
-          //   auth: widget.auth,
-          //   logoutCallback: logoutCallback,
-          // );
         } else
           return buildWaitingScreen();
         break;

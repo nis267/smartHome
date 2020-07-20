@@ -1,14 +1,12 @@
-import 'package:flutter/services.dart';
-import 'package:flutter_simple_dependency_injection/injector.dart';
+import 'package:flutter_phoenix/flutter_phoenix.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
-// import 'package:tiche_flutter/config.dart';
 import 'package:flutter_app/models/device.dart';
 import 'package:flutter_app/models/room.dart';
 import 'dart:async';
-import 'package:flutter_app/services/authentication.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_app/services/http_request.dart';
 import 'package:flutter/foundation.dart';
+import '../globals.dart' as globals;
 
 List<Device> parsedDevices(dynamic response) {
   final parsed = response.cast<Map<String, dynamic>>();
@@ -34,75 +32,57 @@ class SocketService {
   IO.Socket socket;
   String _jwt;
   String _host;
-  // BaseAuth auth = new Auth();
-  // Injector.getInjector()
   
   StreamController<List<Device>> deviceController = StreamController.broadcast();
   Stream<List<Device>> get stream => deviceController.stream;
-
   final storage = new FlutterSecureStorage();
 
   NetworkUtil _netUtil = new NetworkUtil();
-  // SocketService() {
-  //   deviceController.onListen = () {
-  //     deviceController.add(getDeviceModelData()); // triggered when the first subscriber is added
-  //   };
-  // }
 
   createSocketConnection(String host, String jwt) {
     _jwt = jwt;
     _host = host;
-    print("jwt create socket: " + jwt);
-    print("host: " + host);
     socket = IO.io('http://$host:8080/users'/*config.socketUrl*/, <String, dynamic>{
       'query': 'token=' + jwt,
       'path': '/smartHome',
       'transports': ['websocket'],
     });
 
-    print("socket nsp: ");
-    print(socket.nsp);
     this.socket.on("connect", (_) => {
       print('Connected'),
-      print('jwt: ' + _jwt),
+      print('jwt: '),
+      print(_jwt),
       socket.emit('setUser', _jwt),
-      // chatController.
   });
+
     this.socket.on("disconnect", (_) => {
       print('Disconnected'),
+      socket.disconnect(),
       storage.delete(key: 'token'),
-      // SystemNavigator.pop()
+      Phoenix.rebirth(globals.context),
+      _jwt = null
       });
 
-    // this.socket.on("deviceDisconnected", (_) => {
-    //   print("deviceDisconnected"),
-    //   getDeviceModelData()
-    // });
-
     this.socket.on("stateChanged", (roomId) => {
-      print("stateChanged: "),
-      print(roomId),
       getDeviceModelData(roomId)
     });
-
-    // this.socket.on("deviceConnected", (_) => {
-    //   print("deviceConnected"),
-    //   getDeviceModelData()
-    // });
   }
 
   closeSocketConnection() {
-    // deviceController.close();
     socket.emit('disconnectUser');
     socket.disconnect();
+  }
+
+  leaveUserRoom(int roomId) {
+    socket.emit('leaveUserRoom', {'room_id': roomId});
   }
 
   sendAction(socketId, state) {
     socket.emit('setAction', {'socket_id': socketId, 'state': state});
   }
 
-  setDeviceNameRoom(int id, String roomName, int roomId) {
-    socket.emit('setDeviceNameRoom', {'id': id, 'name': roomName, 'room_id': roomId});
+  setDeviceNameRoom(int id, String roomName, int roomId, int actualRoomId) {
+    socket.emit('setDeviceNameRoom', {'id': id, 'name': roomName, 'room_id': roomId, 'actual_room_id': actualRoomId});
   }
 
   setUserRoom(Room room) {
@@ -111,9 +91,6 @@ class SocketService {
 
   getDeviceModelData(int roomId) async {
     final userUrl = "http://$_host:8080/devices/$roomId";
-    print("useUrl: ");
-    print(userUrl);
-    final json = await getJsonFromJWT(await storage.read(key: 'token'));
 
     String token = await storage.read(key: 'token');
     var headers = {
@@ -125,8 +102,7 @@ class SocketService {
       headers: headers,
       // body: body,
     );
-
-    if (response.length == 0) return null;
+    if (response.length == 0) return deviceController.add(<Device>[]);
 
     List<Device> devices = await isolateDevices(response);
     deviceController.add(devices);
@@ -134,7 +110,6 @@ class SocketService {
 
   Future<List<Room>> getRoomModelData() async {
     final userUrl = "http://$_host:8080/rooms";
-    final json = await getJsonFromJWT(await storage.read(key: 'token'));
 
     String token = await storage.read(key: 'token');
     var headers = {
@@ -150,7 +125,6 @@ class SocketService {
     if (response.length == 0) return null;
 
     List<Room> rooms = await isolateRooms(response);
-    // deviceController.add(devices);
     return rooms;
   }
 }
