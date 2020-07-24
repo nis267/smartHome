@@ -21,6 +21,8 @@ abstract class BaseAuth {
 
   Future<String> signUp(String host, String username);
 
+  Future<String> connectDevice(String ssid, String passwordWifi, String serverAddress, String passwordServer);
+
   Future<User> getCurrentUser();
 
   Future<void> sendEmailVerification();
@@ -48,6 +50,16 @@ List<Device> parsedDevices(dynamic response) {
 
 Future<List<Device>> isolateDevices(dynamic response) async {
   return compute(parsedDevices, response);
+}
+
+List<User> parsedUsers(dynamic response) {
+  final parsed = response.cast<Map<String, dynamic>>();
+
+  return parsed.map<User>((json) => User.fromJson(json)).toList();
+}
+
+Future<List<User>> isolateUsers(dynamic response) async {
+  return compute(parsedUsers, response);
 }
 
 class Auth implements BaseAuth {
@@ -106,6 +118,38 @@ class Auth implements BaseAuth {
     return 'user.uid'; // TODO
   }
 
+  Future<String> connectDevice(String ssid, String passwordWifi, String serverAddress, String passwordServer) async {
+    final loginUrl = "http://192.168.4.1:80/";
+
+    var data = {
+      "ssid": ssid,
+      "password_wifi": passwordWifi,
+      "server_address": serverAddress,
+      "password_server": passwordServer
+    };
+
+    String body = jsonEncode(data);
+
+    var headers = {
+      'Content-Type': 'application/json',
+    };
+    final result = await _netUtil.post(
+      loginUrl,
+      headers: headers,
+      body: body,
+    );
+
+
+    if (result["error"]) {
+      print('here error:');
+      print(result["error_msg"]);
+      throw new Exception(result["error_msg"]);
+    }
+
+    return result["success"];
+  }
+  
+
   Future<User> getCurrentUser() async {
     if (_host == null) {
       return null;
@@ -126,16 +170,16 @@ class Auth implements BaseAuth {
       headers: headers,
       body: body,
     );
-    User user;
+    List<User> users;
     if (result != null) {
-      print("result: ");
-      print(result);
-      user = new User(result['id'].toString(), result['room_id'] == null ? 0 : result['room_id'],
-          result['name'], result['socket_id']);
+      users = await isolateUsers(result);
+      print("user authentification");
+      print(users[0].id);
+      // user = new User(result['id'], result['room_id'] == null ? 0 : result['room_id'], result['name'], result['socket_id']);
     } else {
-      user = null;
+      users = null;
     }
-    return user;
+    return users[0];
   }
 
   Future<void> sendAction(String socketId, int state) async {

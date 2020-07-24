@@ -76,7 +76,6 @@ app.post('/login', async (req, res) => {
   }
   var token = jwt.sign({ uid: user[0].id }, secret, { expiresIn: 86440 });
   return res.json({ error: false, token: token });
-  //  resp.render('/home');
 });
 
 app.post('/user', checkToken, async (req, res) => {
@@ -84,27 +83,34 @@ app.post('/user', checkToken, async (req, res) => {
   const { body } = req;
   const { id } = body;
 
-  const user = await mysqlQuery('SELECT id, room_id, name, socket_id FROM user WHERE id = ? LIMIT 1', [id]);
-  return res.json(user[0]);
+  const user = await mysqlQuery('SELECT * FROM user WHERE id = ?', [id]);
+  return res.json(user);
 });
 
 app.post('/rooms', checkToken, async (req, res) => {
   console.log("get rooms");
-
-  // const room = await mysqlQuery('SELECT name FROM room');
-  // if (user.length) {
-  //     const check = await bcrypt.compareSync(req.body.password, user[0].password);
-  //     if (!check) {
-  //         return res.json({ error: true, error_msg: 'Wrong credentials' });
-  //     }
-  // } else {
-  //     return res.json({ error: true, error_msg: 'Wrong credentials' });
-  // }
-  // var token = jwt.sign({ uid: user[0].id }, secret, { expiresIn: 86440 });
-  // return res.json({ error: false, token: token });
-  //  resp.render('/home');
   const rooms = await mysqlQuery('SELECT id, name FROM room');
   return res.json(rooms);
+});
+
+app.post('/rooms/:roomId', checkToken, async (req, res) => {
+  console.log("get room");
+  const roomId = req.params.roomId;
+  const room = await mysqlQuery('SELECT id, name FROM room WHERE id = ?', [roomId]);
+  return res.json(room);
+});
+
+app.post('/rooms/empty/:roomId', checkToken, async (req, res) => {
+  console.log("get users room");
+  const roomId = req.params.roomId;
+  const room = await mysqlQuery('SELECT * FROM user WHERE room_id = ?', [roomId]);
+  return res.json(room);
+});
+
+app.post('/devices/free', checkToken, async (req, res) => {
+  console.log("devices/free");
+  const devices = await mysqlQuery('SELECT * FROM device WHERE room_id IS NULL');
+  return res.json(devices);
 });
 
 app.post('/devices/:roomId', checkToken, async (req, res) => {
@@ -112,7 +118,16 @@ app.post('/devices/:roomId', checkToken, async (req, res) => {
   const { body } = req;
   const { id } = body;
 
-  const devices = await mysqlQuery('SELECT id, room_id, name, mac_address, state, socket_id FROM device WHERE room_id = ?', [roomId]);
+  const devices = await mysqlQuery('SELECT * FROM device WHERE room_id = ?', [roomId]);
+  return res.json(devices);
+});
+
+app.post('/device/exist/:deviceId', checkToken, async (req, res) => {
+  const deviceId = req.params.deviceId;
+  const { body } = req;
+  const { id } = body;
+
+  const devices = await mysqlQuery('SELECT * FROM device WHERE id = ?', [deviceId]);
   return res.json(devices);
 });
 
@@ -125,9 +140,6 @@ async function withTransaction(connection, callback) {
     await connection.rollback();
     throw err;
   }
-  // finally {
-  //   await connection.close();
-  // }
 }
 
 app.post('/signup', async (req, res) => {
@@ -186,24 +198,30 @@ const initEngine = (io) => {
   // const devices_nsp = io.of('/devices');
   const users_nsp = io.of('/users');
 
-  users_nsp.use(socketioJwt.authorize({
-    secret: secret,
-    handshake: true,
-  }));
+  // users_nsp.use(socketioJwt.authorize({
+  //   secret: secret,
+  //   handshake: true,
+  // }));
 
-  users_nsp.on('connection', async (socket) => {
-    console.log("user connection");
+  users_nsp.on('connection', socketioJwt.authorize({
+    secret: secret,
+    timeout: 15000 // 15 seconds to send the authentication message
+  })).on('authenticated', (socket) => {
+  
+  // async (socket) => {
+    console.log("user connection authenticated");
 
     socket.on('setUserRoom', async (object) => {
       socket.join(object.room_id);
-      console.log("setUserRoom object.room_id: ", object.room_id);
+      console.log("setUserRoom object: ", object);
+
       const result = await mysqlQuery('UPDATE user SET room_id = ? WHERE socket_id = ?', [object.room_id, socket.id]);
     });
 
     socket.on('leaveUserRoom', async (object) => {
       console.log("leaveUserRoom object.room_id: ", object.room_id);
       socket.leave(object.room_id);
-      // const result = await mysqlQuery('UPDATE user SET room_id = NULL WHERE socket_id = ?', [socket.id]);
+      const result = await mysqlQuery('UPDATE user SET room_id = NULL WHERE socket_id = ?', [socket.id]);
     });
 
     socket.on('setDeviceNameRoom', async (object) => {
@@ -213,6 +231,17 @@ const initEngine = (io) => {
         users_nsp.to(object.room_id).emit('stateChanged', object.room_id);
       }
     });
+
+    socket.on('addDeviceToRoom', async (object) => {
+      const result = await mysqlQuery('UPDATE device SET room_id = ? WHERE id = ?', [object.room_id, object.device_id]);
+      users_nsp.to(object.room_id).emit('stateChanged', object.room_id);
+    });
+
+    socket.on('removeDeviceFromRoom', async (object) => {
+      console.log("object: ", object);
+      const result = await mysqlQuery('UPDATE device SET room_id = NULL WHERE id = ?', [object.device_id]);
+      users_nsp.to(object.room_id).emit('stateChanged', object.room_id);
+    })
 
     socket.on('setUser', async (jwtString) => {
       if (jwtString) {
@@ -224,9 +253,28 @@ const initEngine = (io) => {
       }
     });
 
-    socket.on('setAction', async (object) => {
+    socket.on('setAction', async (object, callback) => {
       const state = object.state == 1 ? 0 : 1;
       io.to(object.socket_id).emit('action', state);
+      callback(true);
+    });
+
+    socket.on('updateRoomName', async (object) => {
+      console.log("updateRoomName: ", object);
+      const results = await mysqlQuery(`UPDATE room SET name = ? WHERE id = ?`, [object.room_name, object.room_id]);
+      console.log("updateRoomName");
+      // socket.emit('stateChangedRoom');
+      users_nsp.emit('stateChangedRoom');
+    });
+
+    socket.on('addRoom', async (object) => {
+      const results = await mysqlQuery('INSERT INTO room(name) VALUES(?)', [object.room_name]);
+      users_nsp.emit('stateChangedRoom');
+    });
+
+    socket.on('deleteRoom', async (object) => {
+      const results = await mysqlQuery('DELETE FROM room WHERE id = ?', [object.room_id]);
+      users_nsp.emit('stateChangedRoom');
     });
 
     socket.on('disconnect', async () => {
@@ -241,10 +289,10 @@ const initEngine = (io) => {
 
     // users_nsp.emit('stateChanged');
 
-    socket.on('setAction', async (object) => {
-      const state = object.state == 1 ? 0 : 1;
-      io.to(object.socket_id).emit('action', state);
-    });
+    // socket.on('setAction', async (object) => {
+    //   const state = object.state == 1 ? 0 : 1;
+    //   io.to(object.socket_id).emit('action', state);
+    // });
 
     socket.on('state', async (object) => {
       const result = await mysqlQuery('UPDATE device SET state = ? WHERE mac_address = ?', [object.state, object.mac]);
@@ -258,21 +306,25 @@ const initEngine = (io) => {
       let results = await mysqlQuery('SELECT * FROM device WHERE socket_id = ? LIMIT 1', [socket.id]);
       if (results.length) {
         const roomId = results[0].room_id;
-        let result = await mysqlQuery('UPDATE device SET socket_id = NULL WHERE socket_id = ?', [socket.id]);
-        users_nsp.to(roomId).emit('stateChanged', roomId);
+        let result = await mysqlQuery('UPDATE device SET socket_id = NULL, state = 0 WHERE socket_id = ?', [socket.id]);
+        if (roomId) {
+          users_nsp.to(roomId).emit('stateChanged', roomId);
+        }
       }
     });
 
     socket.on('setInit', async (object) => {
-
+      var roomId = null;
       let results = await mysqlQuery('SELECT * FROM device WHERE mac_address = ? LIMIT 1', [object.mac]);
-      const roomId = results[0].room_id;
       if (results.length == 0) {
         results = await mysqlQuery(`INSERT INTO device(mac_address, socket_id, state) VALUES(?, ?, ?)`, [object.mac, socket.id, object.state]);
       } else {
+        roomId = results[0].room_id;
         results = await mysqlQuery(`UPDATE device SET socket_id = ?, state = ? WHERE mac_address = ?`, [socket.id, object.state, object.mac]);
       }
-      users_nsp.to(roomId).emit('stateChanged', roomId);
+      if (roomId != null) {
+        users_nsp.to(roomId).emit('stateChanged', roomId);
+      }
     });
   });
 };

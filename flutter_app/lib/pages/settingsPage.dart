@@ -13,7 +13,7 @@ class SettingsPage extends StatefulWidget {
   static const String routeName = '/settings';
   final BaseAuth auth;
   final VoidCallback logoutCallback;
-  final String userId;
+  final int userId;
   final String userName;
 
   @override

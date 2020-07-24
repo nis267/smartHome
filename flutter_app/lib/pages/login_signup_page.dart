@@ -16,12 +16,19 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
   final _formKey = new GlobalKey<FormState>();
   bool rememberMe = false;
   final _hostController = TextEditingController();
+  final _serverAddressController = TextEditingController();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _passwordServerController = TextEditingController();
   String _errorMessage;
 
-  bool _isLoginForm;
+  // int _button = 1;
+  // bool _isLoginForm;
   bool _isLoading;
+
+  String _primaryButton = 'Login';
+  String _secondaryButton = 'Create an account';
+  String _thirdButton = 'Connect to device';
 
   // Check if form is valid before perform login or signup
   bool validateAndSave() {
@@ -44,22 +51,28 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
     if (validateAndSave()) {
       String userId = "";
       try {
-        if (_isLoginForm) {
+        if (_primaryButton == 'Login') {
           userId = await widget.auth.signIn(_hostController.text,
               _usernameController.text, _passwordController.text);
           print('Signed in: $userId');
-        } else {
+        } else if (_primaryButton == 'Create account') {
           userId = await widget.auth
               .signUp(_hostController.text, _usernameController.text);
           //widget.auth.sendEmailVerification();
           //_showVerifyEmailSentDialog();
           print('Signed up user: $userId');
+        } else if (_primaryButton == 'Connect device') {
+          print('Connect device');
+          userId = await widget.auth.connectDevice(_hostController.text, _passwordController.text, _serverAddressController.text, _passwordServerController.text);
+          print("userId");
+          print(userId);
         }
         setState(() {
           _isLoading = false;
         });
 
-        if (userId.length > 0 && userId != null && _isLoginForm) {
+        print("hereeee");
+        if (userId.length > 0 && userId != null && _primaryButton == 'Login') {
           widget.loginCallback();
         }
       } catch (e) {
@@ -94,7 +107,7 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
     initLoginCredentials();
     _errorMessage = "";
     _isLoading = false;
-    _isLoginForm = true;
+    // _isLoginForm = true;
     super.initState();
   }
 
@@ -106,16 +119,31 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
   void resetTextControllers() {
     _hostController.clear();
     _usernameController.clear();
+    _serverAddressController.clear();
     _passwordController.clear();
+    _passwordServerController.clear();
   }
 
-  void toggleFormMode(BuildContext context) {
+  void toggleFormMode(BuildContext context, int button) {
     FocusScope.of(context).unfocus();
     resetForm();
     setState(() {
-      _isLoginForm = !_isLoginForm;
+      if (button == 3 && _thirdButton == 'Connect to device') {
+        _primaryButton = 'Connect device';
+        _secondaryButton = 'Have an account ? Sign in';
+        _thirdButton = 'Create an account';
+      } else if ((button == 3 && _thirdButton == 'Create an account') || (button == 2 && _secondaryButton == 'Create an account')) {
+        _primaryButton = 'Create account';
+        _secondaryButton = 'Have an account ? Sign in';
+        _thirdButton = 'Connect to device';
+      } else if (button == 2 && _secondaryButton == 'Have an account ? Sign in') {
+        _primaryButton = 'Login';
+        _secondaryButton = 'Create an account';
+        _thirdButton = 'Connect to device';
+      }
+      // _isLoginForm = !_isLoginForm;
       resetTextControllers();
-      if (_isLoginForm) {
+      if (_primaryButton == 'Login') {
         initLoginCredentials();
       }
     });
@@ -168,17 +196,6 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
 //    );
 //  }
 
-  // Widget _showFormLogin() {
-  //   return ([
-  //     showLogo(),
-  //             showHostInput(),
-  //             showUsernameInput(),
-  //             _isLoginForm ? showPasswordInput() : null,
-  //             showPrimaryButton(),
-  //             showSecondaryButton(),
-  //             showErrorMessage(),
-  //   ]);
-  // }
   Widget _showForm(BuildContext context) {
     return new Container(
         padding: EdgeInsets.all(16.0),
@@ -188,12 +205,16 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
             shrinkWrap: true,
             children: <Widget>[
               showLogo(),
-              showHostInput(),
-              showUsernameInput(),
-              if (_isLoginForm) showPasswordInput(),
-              if (_isLoginForm) showCheckBoxRememberMe(),
+              showHostInput(_primaryButton == 'Connect device' ? 'SSID' : 'Host'),
+              if (_primaryButton != 'Connect device') showUsernameInput(),
+              if (_primaryButton != 'Create account') showPasswordInput(_primaryButton == 'Connect device' ? 'Password wifi' : 'Password'),
+              if (_primaryButton == 'Connect device') showHostInput('Server address'),
+              if (_primaryButton == 'Connect device') showPasswordInput('Password server'),
+              if (_primaryButton == 'Login') showCheckBoxRememberMe(),
+              // if (_primaryButton == 'Connect device') showConnectDevice(),
               showPrimaryButton(context),
               showSecondaryButton(context),
+              showthirdButton(context),
               showErrorMessage(),
             ],
           ),
@@ -257,21 +278,21 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
     );
   }
 
-  Widget showHostInput() {
+  Widget showHostInput(String text) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(0.0, 100.0, 0.0, 0.0),
+      padding: text == 'Server address' ? const EdgeInsets.fromLTRB(0.0, 15.0 , 0.0, 0.0) : const EdgeInsets.fromLTRB(0.0, 100.0 , 0.0, 0.0),
       child: new TextFormField(
-        controller: _hostController,
+        controller: text == 'Server address' ? _serverAddressController : _hostController,
         maxLines: 1,
         keyboardType: TextInputType.text,
         autofocus: false,
         decoration: new InputDecoration(
-            hintText: 'Host',
+            hintText: text,
             icon: new Icon(
-              Icons.dns,
+              text == 'SSID' ? Icons.wifi : Icons.dns,
               color: Colors.grey,
             )),
-        validator: (value) => value.isEmpty ? 'Host can\'t be empty' : null,
+        validator: (value) => value.isEmpty ?  text + ' can\'t be empty' : null,
       ),
     );
   }
@@ -295,33 +316,44 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
     );
   }
 
-  Widget showPasswordInput() {
+  Widget showPasswordInput(String text) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(0.0, 15.0, 0.0, 0.0),
       child: new TextFormField(
-        controller: _passwordController,
+        controller: text == 'Password server' ? _passwordServerController : _passwordController,
         maxLines: 1,
         obscureText: true,
         autofocus: false,
         decoration: new InputDecoration(
-            hintText: 'Password',
+            hintText: text,
             icon: new Icon(
               Icons.lock,
               color: Colors.grey,
             )),
-        validator: (value) => value.isEmpty ? 'Password can\'t be empty' : null,
+        validator: (value) => value.isEmpty ? text + ' can\'t be empty' : null,
       ),
     );
   }
 
-  Widget showSecondaryButton(BuildContext context) {
+  Widget showthirdButton(BuildContext context) {
     return new FlatButton(
-        child: new Text(
-            _isLoginForm ? 'Create an account' : 'Have an account? Sign in',
+        child: new Text(_thirdButton,
+          // 'Connect to device',
             style: new TextStyle(fontSize: 18.0, fontWeight: FontWeight.w300)),
         onPressed: () 
         {
-          toggleFormMode(context);
+          toggleFormMode(context, 3);
+        });
+  }
+  
+  Widget showSecondaryButton(BuildContext context) {
+    return new FlatButton(
+        child: new Text(_secondaryButton,
+            // _isLoginForm ? 'Create an account' : 'Have an account? Sign in',
+            style: new TextStyle(fontSize: 18.0, fontWeight: FontWeight.w300)),
+        onPressed: () 
+        {
+          toggleFormMode(context, 2);
         });
   }
 
@@ -335,7 +367,8 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
             shape: new RoundedRectangleBorder(
                 borderRadius: new BorderRadius.circular(30.0)),
             color: Colors.blue,
-            child: new Text(_isLoginForm ? 'Login' : 'Create account',
+            child: new Text(_primaryButton,
+              // _isLoginForm ? 'Login' : 'Create account',
                 style: new TextStyle(fontSize: 20.0, color: Colors.white)),
             onPressed: () {
               validateAndSubmit(context);

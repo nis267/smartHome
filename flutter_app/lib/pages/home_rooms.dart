@@ -1,9 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_app/models/drawer_data.dart';
 import 'package:flutter_app/models/room.dart';
+import 'package:flutter_app/models/user.dart';
 import 'package:flutter_app/pages/app_drawer.dart';
-import 'package:flutter_app/pages/page_1.dart';
+import 'package:flutter_app/pages/room_page.dart';
 import 'package:flutter_app/services/authentication.dart';
 import 'package:flutter_app/services/socket.dart';
 import 'package:flutter_simple_dependency_injection/injector.dart';
@@ -16,7 +17,7 @@ class HomeRoomsPage extends StatefulWidget {
   static const String routeName = '/homeRooms';
   final BaseAuth auth;
   final VoidCallback logoutCallback;
-  final String userId;
+  final int userId;
   final String userName;
 
   @override
@@ -25,189 +26,295 @@ class HomeRoomsPage extends StatefulWidget {
 
 class _HomeRoomsPageState extends State<HomeRoomsPage> {
   final injector = Injector.getInjector();
-  PageController _pageController;
   SocketService socketService;
   List<Room> roomsList = [];
-  List<FocusNode> myFocusNodes = new List<FocusNode>();
-  List<bool> _isEditingText = new List<bool>();
-  // TextEditingController _editingController;
+  final _formKey = new GlobalKey<FormState>();
+  String currentSelectedName;
+  bool enabled = false;
 
   @override
   void initState() {
     super.initState();
-
-    print("userName: " + widget.userName);
-
     socketService = injector.get<SocketService>();
-    // drawerItems =
-    print("userId: ");
-    print(widget.userId);
-    // socketService.getRoomModelData().then((value) => {
-    //       setState(() {
-    //         roomsList = value;
-    //         print(roomsList);
-    //       })
-    //     });
-    // _pageController = PageController(initialPage: 0);
-    print("roomList: ");
-    print(roomsList);
-    // _editingController = TextEditingController(text: 'test');
-    // _editingController.
-    // myFocusNode = FocusNode();
+    socketService.getRoomModelDataStream();
   }
 
   @override
   void dispose() {
-    // Clean up the focus node when the Form is disposed.
-    // myFocusNode.dispose();
-    print("dispose");
-    for (int i = 0; i < roomsList.length; i++) {
-      myFocusNodes[i].unfocus();
-      myFocusNodes[i].dispose();
-    }
     super.dispose();
   }
 
-  int tmpIndex = -1;
+  Widget showNameInput() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0.0, 15.0, 0.0, 0.0),
+      child: new TextFormField(
+        initialValue: currentSelectedName,
+        maxLines: 1,
+        keyboardType: TextInputType.text,
+        autofocus: false,
+        decoration: new InputDecoration(
+          labelText: 'Name',
+        ),
+        validator: (value) => value.isEmpty ? 'Name can\'t be empty' : null,
+        onSaved: (value) => {
+          currentSelectedName = value.trim(),
+        },
+      ),
+    );
+  }
+
+  void showSnackBarText(BuildContext context, String text) {
+    final snackBar =
+        SnackBar(content: Text(text), duration: Duration(milliseconds: 2000));
+    Scaffold.of(context).removeCurrentSnackBar();
+    Scaffold.of(context).showSnackBar(snackBar);
+  }
+
+  Future<Room> createDialogUpdateRoom(
+      BuildContext contextScafold, Room room) async {
+    currentSelectedName = room.name;
+    return await showDialog(
+        context: contextScafold,
+        builder: (BuildContext context) {
+          return new AlertDialog(
+            title: Text("Room settings"),
+            content: new Form(key: _formKey, child: showNameInput()),
+            actions: <Widget>[
+              FlatButton(
+                child: Text('Cancel'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+              FlatButton(
+                child: Text('Submit'),
+                onPressed: () {
+                  final form = _formKey.currentState;
+                  if (form.validate()) {
+                    form.save();
+                    showSnackBarText(
+                        contextScafold, room.name + ' is modified');
+                    Navigator.of(context)
+                        .pop(new Room(id: room.id, name: currentSelectedName));
+                  }
+                },
+              ),
+            ],
+          );
+        });
+  }
+
+  Future<String> createDialogAddRoom(BuildContext contextScafold) async {
+    currentSelectedName = null;
+    return await showDialog(
+        context: contextScafold,
+        builder: (BuildContext context) {
+          return new AlertDialog(
+            title: Text("Add room"),
+            content: new Form(key: _formKey, child: showNameInput()),
+            actions: <Widget>[
+              FlatButton(
+                child: Text('Cancel'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+              FlatButton(
+                child: Text('Submit'),
+                onPressed: () {
+                  final form = _formKey.currentState;
+                  if (form.validate()) {
+                    form.save();
+                    showSnackBarText(
+                        contextScafold, currentSelectedName + ' is added');
+                    Navigator.of(context).pop(currentSelectedName);
+                  }
+                },
+              ),
+            ],
+          );
+        });
+  }
+
+  Future<Room> createDialogRemoveRoom(BuildContext contextScafold, Room room) async {
+    return await showDialog(
+        context: contextScafold,
+        builder: (BuildContext context) {
+          return new AlertDialog(
+            title: Text("Delete room"),
+            content: Text('You really want to delete ' + room.name + ' ?'),
+            actions: <Widget>[
+              FlatButton(
+                child: Text('No'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+              FlatButton(
+                  child: Text('Yes'),
+                  onPressed: () {
+                    showSnackBarText(contextScafold, room.name + ' is deleted');
+                    Navigator.of(context).pop(room);
+                  }),
+            ],
+          );
+        });
+  }
+
+  createDialogRoomBusy(BuildContext contextScafold, Room room) async {
+        return await showDialog(
+        context: contextScafold,
+        builder: (BuildContext context) {
+          return new AlertDialog(
+            title: Text("Delete room"),
+            content: Text('Room ' + room.name + ' is busy'),
+            actions: <Widget>[
+              FlatButton(
+                child: Text('Ok'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          );
+        });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onTap: () {
-          if (tmpIndex > -1) {
-            setState(() {
-              _isEditingText[tmpIndex] = false;
-            });
-            tmpIndex = -1;
-          }
-          FocusScope.of(context).requestFocus(new FocusNode());
-        },
-        child: Scaffold(
-          appBar: AppBar(title: Text("Home")),
-          body: FutureBuilder(
-                  future: socketService.getRoomModelData(),
-                  builder: (context, snapshot) {
-                    if (snapshot.hasError) return Text(snapshot.error);
-                    if (snapshot.hasData) {
-                      roomsList = snapshot.data;
-                      for (int i = 0; i < roomsList.length; i++) {
-                        myFocusNodes.add(FocusNode());
-                        myFocusNodes[i].requestFocus();
-                        _isEditingText.add(false);
-                      }
-                      return ListView.builder(
-                          physics: ClampingScrollPhysics(),
-                          shrinkWrap: true,
-                          itemCount: snapshot.data.length,
-                          itemBuilder: (BuildContext context, int index) {
-                            Room room = snapshot.data[index];
-                            return ListTile(
-                              title: TextFormField(
-                                // controller: ,
-                                initialValue: room.name,
-                                focusNode: myFocusNodes[index],
-                                enableInteractiveSelection: true,
-                                enabled: _isEditingText[index],
-                                autofocus: true,
-                                onEditingComplete: () {
-                                  myFocusNodes[index].unfocus();
-                                  setState(() {
-                                    _isEditingText[index] = false;
-                                  });
-                                  tmpIndex = -1;
-                                },
-                                // room.name,
-                                // style: TextStyle(
-                                //   color: _page == index
-                                //       ? Theme.of(context).primaryColor
-                                //       : Theme.of(context).textTheme.headline6.color,
-                                // ),
-                              ),
-                              trailing: Wrap(
-                                // spacing: 12,
-                                children: [
-                                  IconButton(
-                                    icon: Icon(Icons.edit),
-                                    onPressed: () {
-                                      setState(() {
-                                        _isEditingText[index] = true;
-                                        if (tmpIndex != -1 &&
-                                            tmpIndex != index) {
-                                          _isEditingText[tmpIndex] = false;
-                                          // myFocusNodes[index].unfocus();
-                                        }
-                                      });
-                                      tmpIndex = index;
-                                      myFocusNodes[index].requestFocus();
-                                    },
-                                  ),
-                                  IconButton(
-                                    icon: Icon(Icons.delete),
-                                    onPressed: () {
-                                      print("delete button pressed");
-                                    },
-                                  )
-                                ],
-                              ),
+    return Scaffold(
+      appBar: AppBar(title: Text("Home")),
+      body: StreamBuilder(
+          stream: socketService.streamRooms,
+          builder: (context, snapshot) {
+            if (snapshot.hasError) return Text(snapshot.error);
+            print("data: ");
+            print(snapshot.data);
+            if (snapshot.hasData) {
+              roomsList = snapshot.data;
+              return AbsorbPointer(
+              absorbing: enabled,
+              child: 
+               Column(children: [
 
-                              //            trailing: FittedBox(
-                              //   fit: BoxFit.fill,
-                              //   child: Row(
-                              //   children: <Widget>[
-                              //     Icon(Icons.flight),
-                              //     Icon(Icons.flight_land),
-                              //   ],
-                              //   ),
-                              // ),
-
-                              onTap: () {
-                                if (tmpIndex > -1) {
-                                  myFocusNodes[tmpIndex].unfocus();
-                                  setState(() {
-                                    _isEditingText[tmpIndex] = false;
-                                  });
-                                  tmpIndex = -1;
-                                }
+                Expanded(
+                    child: ListView.builder(
+                        physics: ClampingScrollPhysics(),
+                        shrinkWrap: true,
+                        itemCount: snapshot.data.length,
+                        itemBuilder: (BuildContext context, int index) {
+                          Room room = snapshot.data[index];
+                          // AbsorbPointer(
+                            // absorbing: true,
+                          return Card(
+                              child: ListTile(
+                            title: Text(room.name),
+                            trailing: Wrap(
+                              // spacing: 12,
+                              children: [
+                                IconButton(
+                                  icon: Icon(Icons.edit),
+                                  onPressed: () async {
+                                    bool roomExist = await socketService.checkRoomExist(room.id);
+                                    if (roomExist) {
+                                    createDialogUpdateRoom(context, room)
+                                        .then((onValue) {
+                                      if (onValue != null)
+                                        socketService.updateRoomName(onValue);
+                                    });
+                                    }
+                                    else {
+                                      showSnackBarText(context, room.name + ' not available');
+                                    }
+                                  },
+                                ),
+                                IconButton(
+                                  icon: Icon(Icons.delete),
+                                  onPressed: () async {
+                                    bool roomEmpty = await socketService.checkRoomEmpty(room.id);
+                                    print("roomEmpty: ");
+                                    print(roomEmpty);
+                                    if (roomEmpty) {
+                                    createDialogRemoveRoom(context, room)
+                                        .then((value) => {
+                                              if (value != null)
+                                              {
+                                                socketService.deleteRoom(value.id)
+                                              }
+                                            });
+                                    }
+                                    else {
+                                      showSnackBarText(context, 'Room ' + room.name + ' is busy');
+                                    }
+                                  },
+                                )
+                              ],
+                            ),
+                            onTap: () async {
+                              bool roomExist = await socketService.checkRoomExist(room.id);
+                              if (roomExist) {
+                              widget.auth.getCurrentUser().then((user) => {
+                                if (user.roomId == null && enabled == false) {
+                                setState(() {
+                                  enabled = true;
+                                }),
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder: (context) => RoomPage(room: room),
                                   ),
-                                );
-                              },
-                            );
-                          });
-                    }
-                    return Center(child: CircularProgressIndicator());
-                  }),
-          // ),
-
-          drawer: AppDrawer(
-            userId: widget.userId,
-            userName: widget.userName,
-            auth: widget.auth,
-            logoutCallback: widget.logoutCallback,
-            currentRoute: 'Home',
-          ),
-          floatingActionButton: FloatingActionButton(
-            onPressed: () {
-              print("button pressed");
-            },
-            tooltip: 'Add room',
-            child: Icon(Icons.add),
-          ),
-        ));
-  }
-
-  List<Widget> _getListRooms(List<Room> rooms) {
-    List _listRooms = new List<Widget>();
-    int i = 0;
-    for (i = 0; i < rooms.length; i++) {
-      _listRooms.add(
-        RoomPage(room: rooms[i]),
+                                ).then((value) => {
+                                  setState(() {
+                                  enabled = false;
+                                })
+                                }),
+                              }
+                              });
+                              } else {
+                                showSnackBarText(context, room.name + ' not available');
+                              }
+                            },
+                          )
+                          );
+                        })
+                        ),
+                Padding(
+                    padding: const EdgeInsets.fromLTRB(0.0, 15.0, 0.0, 15.0),
+                    child: SizedBox(
+                        height: 40.0,
+                        child: RaisedButton.icon(
+                          elevation: 5.0,
+                          icon: Icon(
+                            Icons.add,
+                            color: Colors.white,
+                          ),
+                          onPressed: () {
+                            createDialogAddRoom(context).then((value) => {
+                                  if (value != null)
+                                    {socketService.addRoom(value)}
+                                });
+                          },
+                          label: Text('Add a room',
+                              style: new TextStyle(
+                                  fontSize: 20.0, color: Colors.white)),
+                          color: Colors.blue,
+                          shape: new RoundedRectangleBorder(
+                              borderRadius: new BorderRadius.circular(30.0)),
+                        )))
+              ])
       );
-    }
-    return _listRooms;
+            }
+            return Center(child: CircularProgressIndicator());
+          }),
+      // ),
+
+      drawer: AppDrawer(
+        userId: widget.userId,
+        userName: widget.userName,
+        auth: widget.auth,
+        logoutCallback: widget.logoutCallback,
+        currentRoute: 'Home',
+      ),
+    );
   }
 }
