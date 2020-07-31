@@ -52,14 +52,13 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
       String userId = "";
       try {
         if (_primaryButton == 'Login') {
+          prefs.setStringList('login', [_hostController.text, _usernameController.text, _passwordController.text]);
           userId = await widget.auth.signIn(_hostController.text,
               _usernameController.text, _passwordController.text);
           print('Signed in: $userId');
         } else if (_primaryButton == 'Create account') {
           userId = await widget.auth
               .signUp(_hostController.text, _usernameController.text);
-          //widget.auth.sendEmailVerification();
-          //_showVerifyEmailSentDialog();
           print('Signed up user: $userId');
         } else if (_primaryButton == 'Connect device') {
           print('Connect device');

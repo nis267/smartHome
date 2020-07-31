@@ -22,6 +22,7 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
 
+  
   @override
   Widget build(BuildContext context) {
     // widget widget = ModalRoute.of(context).settings.arguments;
@@ -36,6 +37,12 @@ class _SettingsPageState extends State<SettingsPage> {
           logoutCallback: widget.logoutCallback,
           currentRoute: 'Settings',
         ),
-        body: Center(child: Text("Settings")));
+        // body: Center(child: Text("Settings"))
+        body: ListView(
+          children: [
+            generateDevicePAssword(),
+          ],  
+        )
+        );
   }
 }

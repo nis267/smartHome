@@ -373,16 +373,16 @@ class _Page1State extends State<RoomPage> {
                               if (deviceExist) {
                                 if (device.socketId != null) {
                                   socketService
-                                      .sendAction(device.socketId, device.state)
-                                      .then((ack) => {
+                                      .sendAction(device.socketId, device.state);
+                                      // .then((ack) => {
                                             showSnackBarText(
                                                 context,
                                                 (device.name != null ? device.name : device.macAddress) +
                                                     ' is ' +
                                                     (value == true
                                                         ? 'on'
-                                                        : 'off')),
-                                          });
+                                                        : 'off'));
+                                          // });
                                   setState(() {});
                                 } else {
                                   showSnackBarText(context,

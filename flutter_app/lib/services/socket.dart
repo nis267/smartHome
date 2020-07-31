@@ -54,6 +54,7 @@ class SocketService {
   NetworkUtil _netUtil = new NetworkUtil();
 
   createSocketConnection(String host, String jwt) {
+    print("socket");
     _jwt = jwt;
     _host = host;
     socket = IO.io('http://$host:8080/users'/*config.socketUrl*/, <String, dynamic>{
@@ -112,15 +113,21 @@ class SocketService {
     socket.emit('leaveUserRoom', {'room_id': roomId});
   }
 
-  Future <bool>sendAction(socketId, state) async {
-    Completer<bool> c = new Completer();
-    socket.emitWithAck('setAction', {'socket_id': socketId, 'state': state}, ack: (bool conf) => {
-      print('ack $conf'),
-      // ack = true,
-      c.complete(conf),
-    });
-    return c.future;
+  sendAction(socketId, state) async {
+    print("socketId: ");
+    print(socketId);
+    socket.emit('setAction', {'socket_id': socketId, 'state': state});
   }
+  // Future <bool>sendAction(socketId, state) async {
+  //   Completer<bool> c = new Completer();
+  //   socket.emit('setAction', {'socket_id': socketId, 'state': state});
+  //   // socket.emitWithAck('setAction', {'socket_id': socketId, 'state': state}, ack: (bool conf) => {
+  //   //   print('ack $conf'),
+  //   //   // ack = true,
+  //   //   c.complete(conf),
+  //   // });
+  //   return c.future;
+  // }
 
   setDeviceNameRoom(int id, String roomName, int roomId, int actualRoomId) {
     socket.emit('setDeviceNameRoom', {'id': id, 'name': roomName, 'room_id': roomId, 'actual_room_id': actualRoomId});

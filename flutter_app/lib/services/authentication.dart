@@ -70,24 +70,32 @@ class Auth implements BaseAuth {
   String _host;
   // Injector injector
   // injector = Injector.getInjector();
-
   Future<String> signIn(String host, String username, String password) async {
     final SocketService socketService = injector.get<SocketService>();
     _host = host;
     final loginUrl = "http://" + host + ":8080/login";
 
-    final jwt = await _netUtil.post(loginUrl, body: {
-      // "token": _API_KEY,
-      "username": username,
-      "password": password
-    });
-    await storage.write(key: 'token', value: jwt['token']);
+    String basicAuth = 'Basic ' + base64Encode(utf8.encode('$username:$password'));
+    Map<String, String> headers = {
+      'content-type': 'application/json',
+      'accept': 'application/json',
+      'authorization': basicAuth
+    };
+
+    final jwt = await _netUtil.post(loginUrl, headers: headers,
+    );
+      print("there");
+
+      print("token: ");
+      print(jwt);
+    print("after");
     if (jwt["error"]) {
       throw new Exception(jwt["error_msg"]);
     }
     if (jwt != null) {
       socketService.createSocketConnection(host, jwt['token']);
     }
+    await storage.write(key: 'token', value: jwt['token']);
     final result = await getJsonFromJWT(await storage.read(key: 'token'));
     return result['uid'].toString();
   }

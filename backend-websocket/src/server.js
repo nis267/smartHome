@@ -9,7 +9,8 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import generator from 'generate-password';
 
-const secret = 'smarthome';
+const secret_user = 'smarthome_user';
+const secret_device = 'smarthome_device';
 const saltRounds = 10;
 
 let app = express();
@@ -25,7 +26,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }))
 
 //Check to make sure header is not undefined, if so, return Forbidden (403)
-const checkToken = async (req, res, next) => {
+const checkToken = async (req, res, next, secret) => {
   const header = req.headers['authorization'];
 
   if (typeof header !== 'undefined') {
@@ -33,7 +34,7 @@ const checkToken = async (req, res, next) => {
     const token = bearer[1];
 
     req.token = token;
-    await jwt.verify(token, secret, async (err, authorizedData) => {
+    await jwt.verify(token, secret_user, async (err, authorizedData) => {
       if (err) {
         //If error send Forbidden (403)
         console.log('ERROR: Could not connect to the protected route');
@@ -65,16 +66,59 @@ const mysqlQuery = (query, replacements) => {
 app.post('/login', async (req, res) => {
   console.log("Login");
 
-  const user = await mysqlQuery('SELECT * FROM user WHERE name = ? LIMIT 1', [req.body.username]);
+  // check for basic auth header
+  if (!req.headers.authorization || req.headers.authorization.indexOf('Basic ') === -1) {
+    return res.status(401).json({ message: 'Missing Authorization Header' });
+  }
+  const base64Credentials = req.headers.authorization.split(' ')[1];
+  const credentials = Buffer.from(base64Credentials, 'base64').toString('ascii');
+  const [username, password] = credentials.split(':');
+
+  const user = await mysqlQuery('SELECT * FROM user WHERE name = ? LIMIT 1', [username]);
   if (user.length) {
-    const check = await bcrypt.compareSync(req.body.password, user[0].password);
+    const check = await bcrypt.compareSync(password, user[0].password);
     if (!check) {
       return res.json({ error: true, error_msg: 'Wrong credentials' });
     }
   } else {
     return res.json({ error: true, error_msg: 'Wrong credentials' });
   }
-  var token = jwt.sign({ uid: user[0].id }, secret, { expiresIn: 86440 });
+  var token = jwt.sign({ uid: user[0].id }, secret_user, { expiresIn: 86440 });
+  return res.json({ error: false, token: token });
+});
+
+app.post('/login_device', async (req, res) => {
+  console.log('Login device');
+  // check for basic auth header
+  if (!req.headers.authorization || req.headers.authorization.indexOf('Basic ') === -1) {
+    return res.status(401).json({ message: 'Missing Authorization Header' });
+  }
+  const base64Credentials = req.headers.authorization.split(' ')[1];
+  const credentials = Buffer.from(base64Credentials, 'base64').toString('ascii');
+  const [mac_address, password] = credentials.split(':');
+
+  if (mac_address.length) {
+    var mac_address_modified = mac_address.replace(/\./g, ":");
+  }
+  console.log("password: ", password);
+  var device = await mysqlQuery('SELECT * FROM device WHERE mac_address = ? LIMIT 1', [mac_address_modified]);
+  if (device.length) {
+    const check = await bcrypt.compareSync(password, device[0].password);
+    if (!check) {
+      return res.json({ error: true, error_msg: 'Wrong credentials' });
+    }
+  } else {
+    device = await mysqlQuery('SELECT * FROM device WHERE (mac_address IS NULL AND password IS NOT NULL) LIMIT 1');
+    if (!device.length) {
+        return res.json({ error: true, error_msg: 'No password available' });
+    }
+    const check = await bcrypt.compareSync(password, device[0].password);
+    if (!check) {
+      return res.json({ error: true, error_msg: 'Wrong credentials' });
+    }
+    const results = await mysqlQuery(`UPDATE device SET mac_address = ? WHERE id = ?`, [mac_address_modified, device[0].id]);
+  }
+  var token = jwt.sign({ did: device[0].id }, secret_device, { expiresIn: 86440 });
   return res.json({ error: false, token: token });
 });
 
@@ -167,6 +211,27 @@ app.post('/signup', async (req, res) => {
   return res.json({ error: false });
 });
 
+app.post('/device/signup', checkToken, async (req, res) => {
+  console.log('device signup');
+
+  var password = null;
+  const result = await mysqlQuery('DELETE FROM device WHERE (mac_address IS NULL AND password IS NOT NULL)');
+  try {
+    password = generator.generate({
+      length: 10,
+      numbers: true,
+    });
+    console.log("device password: ", password);
+    const salt = await bcrypt.genSaltSync(saltRounds);
+    const hashed_password = await bcrypt.hashSync(password, salt);
+    const response = await mysqlQuery('INSERT INTO device (password) VALUES (?)', [hashed_password]);
+
+  } catch (err) {
+    return res.json({ error: true, error_msg: err });
+  }
+  return res.json({ error: false, password: password });
+});
+
 connection.query('CREATE TABLE IF NOT EXISTS room(id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL)'), function (error, results, fields) {
   if (error) {
     console.log("error: ", error);
@@ -175,7 +240,7 @@ connection.query('CREATE TABLE IF NOT EXISTS room(id INT AUTO_INCREMENT PRIMARY 
   }
 };
 
-connection.query('CREATE TABLE IF NOT EXISTS device(id INT AUTO_INCREMENT PRIMARY KEY, room_id INT NULL, name VARCHAR(255), mac_address VARCHAR(17), socket_id NVARCHAR(20), state BOOLEAN DEFAULT FALSE, CONSTRAINT fk_room_device FOREIGN KEY(room_id) REFERENCES room (id) ON DELETE SET NULL)'), function (error, results, fields) {
+connection.query('CREATE TABLE IF NOT EXISTS device(id INT AUTO_INCREMENT PRIMARY KEY, room_id INT NULL, name VARCHAR(255), password VARCHAR(60) NOT NULL, mac_address VARCHAR(17), socket_id VARCHAR(27), state BOOLEAN DEFAULT FALSE, CONSTRAINT fk_room_device FOREIGN KEY(room_id) REFERENCES room (id) ON DELETE SET NULL)'), function (error, results, fields) {
   if (error) {
     // throw error;
     console.log("error: ", error);
@@ -195,20 +260,66 @@ connection.query('CREATE TABLE IF NOT EXISTS user(id INT AUTO_INCREMENT PRIMARY 
 
 const initEngine = (io) => {
 
-  // const devices_nsp = io.of('/devices');
-  const users_nsp = io.of('/users');
+  var devices_nsp = io.of('/devices');
 
-  // users_nsp.use(socketioJwt.authorize({
-  //   secret: secret,
-  //   handshake: true,
-  // }));
-
-  users_nsp.on('connection', socketioJwt.authorize({
-    secret: secret,
+  devices_nsp.on('connection', socketioJwt.authorize({
+    secret: secret_device,
     timeout: 15000 // 15 seconds to send the authentication message
   })).on('authenticated', (socket) => {
-  
-  // async (socket) => {
+    console.log('device namespace connected');
+    console.log("device socket.id", socket.id);
+    // socket.emit('getInit');
+    devices_nsp.to(socket.id).emit('getInit');
+
+      // socket.on('setAction', async (object) => {
+    //   const state = object.state == 1 ? 0 : 1;
+    //   io.to(object.socket_id).emit('action', state);
+    // });
+
+    socket.on('state', async (object) => {
+      const result = await mysqlQuery('UPDATE device SET state = ? WHERE mac_address = ?', [object.state, object.mac]);
+      let results = await mysqlQuery('SELECT * FROM device WHERE mac_address = ? LIMIT 1', [object.mac]);
+      const roomId = results[0].room_id;
+      users_nsp.to(roomId).emit('stateChanged', roomId);
+    });
+
+    socket.on('disconnect', async () => {
+      console.log("device dissconnect");
+      let results = await mysqlQuery('SELECT * FROM device WHERE socket_id = ? LIMIT 1', [socket.id]);
+      if (results.length) {
+        const roomId = results[0].room_id;
+        let result = await mysqlQuery('UPDATE device SET socket_id = NULL, state = 0 WHERE socket_id = ?', [socket.id]);
+        if (roomId) {
+          users_nsp.to(roomId).emit('stateChanged', roomId);
+        }
+      }
+    });
+
+    socket.on('setInit', async (object) => {
+      var roomId = null;
+      let results = await mysqlQuery('SELECT * FROM device WHERE mac_address = ? LIMIT 1', [object.mac]);
+      if (results.length == 0) {
+        results = await mysqlQuery(`INSERT INTO device(mac_address, socket_id, state) VALUES(?, ?, ?)`, [object.mac, socket.id, object.state]);
+      } else {
+        roomId = results[0].room_id;
+        results = await mysqlQuery(`UPDATE device SET socket_id = ?, state = ? WHERE mac_address = ?`, [socket.id, object.state, object.mac]);
+      }
+      if (roomId != null) {
+        users_nsp.to(roomId).emit('stateChanged', roomId);
+      }
+    });
+  // });
+
+  });
+
+  var users_nsp = io.of('/users');
+
+  users_nsp.on('connection', socketioJwt.authorize({
+    secret: secret_user,
+    timeout: 15000 // 15 seconds to send the authentication message
+  })).on('authenticated', (socket) => {
+
+    // async (socket) => {
     console.log("user connection authenticated");
 
     socket.on('setUserRoom', async (object) => {
@@ -253,10 +364,11 @@ const initEngine = (io) => {
       }
     });
 
-    socket.on('setAction', async (object, callback) => {
+    socket.on('setAction', async (object) => {
       const state = object.state == 1 ? 0 : 1;
-      io.to(object.socket_id).emit('action', state);
-      callback(true);
+      const socket_id_split = object.socket_id.split('#')[1];
+      io.to(socket_id_split).emit('action', state);
+      // callback(true);
     });
 
     socket.on('updateRoomName', async (object) => {
@@ -281,52 +393,61 @@ const initEngine = (io) => {
       console.log("User disconnect");
       const results = await mysqlQuery('UPDATE user SET room_id = NULL, socket_id = NULL WHERE socket_id = ?', [socket.id]);
     });
+  })
+  .on('unauthorized', (msg) => {
+    console.log(`unauthorized: ${JSON.stringify(msg.data)}`);
+    // throw new Error(msg.data.type);
   });
 
   io.on('connection', (socket) => {
-    console.log('Device connected');
-    socket.emit('getInit');
+    console.log("io socketId: ", socket.id);
 
-    // users_nsp.emit('stateChanged');
-
-    // socket.on('setAction', async (object) => {
-    //   const state = object.state == 1 ? 0 : 1;
-    //   io.to(object.socket_id).emit('action', state);
-    // });
-
-    socket.on('state', async (object) => {
-      const result = await mysqlQuery('UPDATE device SET state = ? WHERE mac_address = ?', [object.state, object.mac]);
-      let results = await mysqlQuery('SELECT * FROM device WHERE mac_address = ? LIMIT 1', [object.mac]);
-      const roomId = results[0].room_id;
-      users_nsp.to(roomId).emit('stateChanged', roomId);
-    });
-
-    socket.on('disconnect', async () => {
-      console.log("device dissconnect");
-      let results = await mysqlQuery('SELECT * FROM device WHERE socket_id = ? LIMIT 1', [socket.id]);
-      if (results.length) {
-        const roomId = results[0].room_id;
-        let result = await mysqlQuery('UPDATE device SET socket_id = NULL, state = 0 WHERE socket_id = ?', [socket.id]);
-        if (roomId) {
-          users_nsp.to(roomId).emit('stateChanged', roomId);
-        }
-      }
-    });
-
-    socket.on('setInit', async (object) => {
-      var roomId = null;
-      let results = await mysqlQuery('SELECT * FROM device WHERE mac_address = ? LIMIT 1', [object.mac]);
-      if (results.length == 0) {
-        results = await mysqlQuery(`INSERT INTO device(mac_address, socket_id, state) VALUES(?, ?, ?)`, [object.mac, socket.id, object.state]);
-      } else {
-        roomId = results[0].room_id;
-        results = await mysqlQuery(`UPDATE device SET socket_id = ?, state = ? WHERE mac_address = ?`, [socket.id, object.state, object.mac]);
-      }
-      if (roomId != null) {
-        users_nsp.to(roomId).emit('stateChanged', roomId);
-      }
-    });
   });
+  // io.on('connection', (socket) => {
+  //   console.log('Device connected');
+  //   socket.emit('getInit');
+
+
+  //   // users_nsp.emit('stateChanged');
+
+  //   // socket.on('setAction', async (object) => {
+  //   //   const state = object.state == 1 ? 0 : 1;
+  //   //   io.to(object.socket_id).emit('action', state);
+  //   // });
+
+  //   socket.on('state', async (object) => {
+  //     const result = await mysqlQuery('UPDATE device SET state = ? WHERE mac_address = ?', [object.state, object.mac]);
+  //     let results = await mysqlQuery('SELECT * FROM device WHERE mac_address = ? LIMIT 1', [object.mac]);
+  //     const roomId = results[0].room_id;
+  //     users_nsp.to(roomId).emit('stateChanged', roomId);
+  //   });
+
+  //   socket.on('disconnect', async () => {
+  //     console.log("device dissconnect");
+  //     let results = await mysqlQuery('SELECT * FROM device WHERE socket_id = ? LIMIT 1', [socket.id]);
+  //     if (results.length) {
+  //       const roomId = results[0].room_id;
+  //       let result = await mysqlQuery('UPDATE device SET socket_id = NULL, state = 0 WHERE socket_id = ?', [socket.id]);
+  //       if (roomId) {
+  //         users_nsp.to(roomId).emit('stateChanged', roomId);
+  //       }
+  //     }
+  //   });
+
+  //   socket.on('setInit', async (object) => {
+  //     var roomId = null;
+  //     let results = await mysqlQuery('SELECT * FROM device WHERE mac_address = ? LIMIT 1', [object.mac]);
+  //     if (results.length == 0) {
+  //       results = await mysqlQuery(`INSERT INTO device(mac_address, socket_id, state) VALUES(?, ?, ?)`, [object.mac, socket.id, object.state]);
+  //     } else {
+  //       roomId = results[0].room_id;
+  //       results = await mysqlQuery(`UPDATE device SET socket_id = ?, state = ? WHERE mac_address = ?`, [socket.id, object.state, object.mac]);
+  //     }
+  //     if (roomId != null) {
+  //       users_nsp.to(roomId).emit('stateChanged', roomId);
+  //     }
+  //   });
+  // });
 };
 
 const ioEngine = new SocketIO(server, {
