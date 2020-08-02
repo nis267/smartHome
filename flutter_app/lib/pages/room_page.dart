@@ -253,11 +253,6 @@ class _Page1State extends State<RoomPage> {
           return new FutureBuilder(
               future: socketService.getDeviceFree(),
               builder: (context, future) {
-                print("data: ");
-                print(future.data);
-                if (!future.hasData) {
-                  return new Center(child: CircularProgressIndicator());
-                }
                 if (future.hasData && future.data.length >= 1) {
                   return new AlertDialog(
                     title: Text('Add device'),
@@ -343,6 +338,7 @@ class _Page1State extends State<RoomPage> {
                     ],
                   );
                 }
+                return new Center(child: CircularProgressIndicator());
               });
         });
   }

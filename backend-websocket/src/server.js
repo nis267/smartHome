@@ -153,7 +153,7 @@ app.post('/rooms/empty/:roomId', checkToken, async (req, res) => {
 
 app.post('/devices/free', checkToken, async (req, res) => {
   console.log("devices/free");
-  const devices = await mysqlQuery('SELECT * FROM device WHERE room_id IS NULL');
+  const devices = await mysqlQuery('SELECT * FROM device WHERE (room_id IS NULL AND mac_address IS NOT NULL)');
   return res.json(devices);
 });
 

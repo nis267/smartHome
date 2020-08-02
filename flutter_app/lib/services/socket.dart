@@ -187,6 +187,26 @@ class SocketService {
     return devices;
   }
 
+  Future <String>getDeviceNewPassword() async {
+    final userUrl = "http://$_host:8080/device/signup";
+
+    String token = await storage.read(key: 'token');
+    var headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token'
+    };
+    final response = await _netUtil.post(
+      userUrl,
+      headers: headers,
+      // body: body,
+    );
+    if (response["error"]) {
+      print('here error');
+      throw new Exception(response["error_msg"]);
+    }
+    return response["password"];
+  }
+
   Future<List<Room>> getRoomModelData() async {
     final userUrl = "http://$_host:8080/rooms";
 

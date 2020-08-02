@@ -40,6 +40,27 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
     return false;
   }
 
+  createDialogGenerateNewPasswordDevice(
+      BuildContext contextScafold, String msg) async {
+    return await showDialog(
+        context: contextScafold,
+        builder: (BuildContext context) {
+          return new AlertDialog(
+            title: Text('Device info'),
+            content: Text(msg),
+            // Text('The password for a new device is ' + password),
+            actions: <Widget>[
+              FlatButton(
+                child: Text('Ok'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          );
+        });
+  }
+  
   // Perform login or signup
   void validateAndSubmit(BuildContext context) async {
     FocusScope.of(context).unfocus();
@@ -62,7 +83,8 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
           print('Signed up user: $userId');
         } else if (_primaryButton == 'Connect device') {
           print('Connect device');
-          userId = await widget.auth.connectDevice(_hostController.text, _passwordController.text, _serverAddressController.text, _passwordServerController.text);
+          String device_message = await widget.auth.connectDevice(_hostController.text, _passwordController.text, _serverAddressController.text, _passwordServerController.text);
+          createDialogGenerateNewPasswordDevice(context, device_message);
           print("userId");
           print(userId);
         }
@@ -208,7 +230,7 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
               if (_primaryButton != 'Connect device') showUsernameInput(),
               if (_primaryButton != 'Create account') showPasswordInput(_primaryButton == 'Connect device' ? 'Password wifi' : 'Password'),
               if (_primaryButton == 'Connect device') showHostInput('Server address'),
-              if (_primaryButton == 'Connect device') showPasswordInput('Password server'),
+              if (_primaryButton == 'Connect device') showPasswordInput('Password device'),
               if (_primaryButton == 'Login') showCheckBoxRememberMe(),
               // if (_primaryButton == 'Connect device') showConnectDevice(),
               showPrimaryButton(context),
@@ -319,7 +341,7 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(0.0, 15.0, 0.0, 0.0),
       child: new TextFormField(
-        controller: text == 'Password server' ? _passwordServerController : _passwordController,
+        controller: text == 'Password device' ? _passwordServerController : _passwordController,
         maxLines: 1,
         obscureText: true,
         autofocus: false,

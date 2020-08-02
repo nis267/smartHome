@@ -10,7 +10,18 @@
 
 bool http_server_authentication();
 
-enum JSON { CHECK, GET };
+enum JSON
+{
+  CHECK,
+  GET
+};
+
+enum LED_COLOR
+{
+  RED,
+  GREEN,
+  BLUE
+};
 
 SocketIoClient socket;
 // Set web server port number to 80
@@ -34,7 +45,6 @@ String jwt = "";
 int serverPort = 8080;
 int relais = 0;
 int relaisPin = 5;
-int relaisState = LOW;
 bool socket_authenticated = true;
 
 String buildObject()
@@ -43,7 +53,7 @@ String buildObject()
   msg += WiFi.macAddress();
   msg += "\",";
   msg += "\"state\":";
-  msg += String(relaisState);
+  msg += String(digitalRead(relaisPin));
   msg += "}";
   return (msg);
 }
@@ -55,23 +65,22 @@ void getInit(const char *payload, size_t length)
 
 void action(const char *payload, size_t length)
 {
-  if (atoi(payload) == HIGH && relaisState == LOW)
+  if (atoi(payload) == HIGH && digitalRead(relaisPin) == LOW)
   {
-    relaisState = !relaisState;
-    digitalWrite(relaisPin, relaisState);
+    digitalWrite(relaisPin, HIGH);
     socket.emit("state", buildObject().c_str());
   }
-  else if (atoi(payload) == LOW && relaisState == HIGH)
+  else if (atoi(payload) == LOW && digitalRead(relaisPin) == HIGH)
   {
-    relaisState = !relaisState;
-    digitalWrite(relaisPin, relaisState);
+    digitalWrite(relaisPin, LOW);
     socket.emit("state", buildObject().c_str());
   }
 }
 
 void authenticate(const char *payload, size_t length)
 {
-  if (!socket_authenticated) {
+  if (!socket_authenticated)
+  {
     ESP.restart();
   }
 
@@ -99,10 +108,12 @@ void socket_connection()
   socket.on("disconnect", disconnect);
 }
 
-void save_to_eeprom(const char *line) {
+void save_to_eeprom(const char *line)
+{
   int i = 0;
 
-  while (line[i]) {
+  while (line[i])
+  {
     EEPROM.write(i, line[i]);
     i++;
   }
@@ -110,7 +121,7 @@ void save_to_eeprom(const char *line) {
   EEPROM.commit();
 }
 
-void WiFi_login()
+bool WiFi_login()
 {
   WiFi.enableSTA(true);
   WiFi.enableAP(false);
@@ -118,16 +129,16 @@ void WiFi_login()
   int i = 0;
   while (WiFi.status() != WL_CONNECTED)
   { // Wait for the Wi-Fi to connect
-    if (WiFi.status() == WL_CONNECT_FAILED) {
-      save_to_eeprom("");
-      WiFi.enableSTA(false);
-      ESP.restart();
+    if (WiFi.status() == WL_CONNECT_FAILED)
+    {
+      return false;
     }
     delay(1000);
     Serial.print(++i);
     Serial.print(' ');
   }
   Serial.println();
+  return true;
 }
 
 void WiFi_AP()
@@ -137,7 +148,9 @@ void WiFi_AP()
   Serial.println();
 
   Serial.print("Setting soft-AP ... ");
-  if (!WiFi.softAP("ESPsoftAP_01", NULL)) {
+  String ap_name = "smartHome_" + String(random(1000, 9999));
+  if (!WiFi.softAP(ap_name.c_str(), NULL))
+  {
     Serial.println("Failed!");
     WiFi.enableAP(false);
     ESP.restart();
@@ -166,18 +179,19 @@ bool check_data_json(const char *line, JSON type)
   const char *passwordWifi_json = doc["password_wifi"];
   const char *serverAddress_json = doc["server_address"];
   const char *passwordServer_json = doc["password_server"];
-
-  if (!strlen(ssid_json) || !strlen(passwordWifi_json) || !strlen(serverAddress_json) || !strlen(passwordServer_json)) 
+  if (!strlen(ssid_json) || !strlen(passwordWifi_json) || !strlen(serverAddress_json) || !strlen(passwordServer_json))
   {
     return false;
   }
-  if (type == GET) {
+  if (type == GET)
+  {
     ssid = String(ssid_json);
     passwordWifi = String(passwordWifi_json);
     serverAddress = String(serverAddress_json);
     passwordServer = String(passwordServer_json);
   }
-  else {
+  else
+  {
     save_to_eeprom(line);
   }
   return true;
@@ -194,7 +208,8 @@ void send_response(WiFiClient *client, const char *start_line, const char *json)
   (*client).stop();
 }
 
-bool check_auth_result_and_get_jwt(const char *line) {
+bool check_auth_result_and_get_jwt(const char *line)
+{
 
   char json[1024];
 
@@ -210,10 +225,12 @@ bool check_auth_result_and_get_jwt(const char *line) {
   }
 
   const bool error = doc["error"];
-  if (error == true) {
+  if (error == true)
+  {
     return false;
   }
-  if (error == false) {
+  if (error == false)
+  {
     const char *token = doc["token"];
     jwt = token;
   }
@@ -232,13 +249,16 @@ bool http_server_authentication()
   http.POST("");
   String result = http.getString();
   http.end();
-  if (result.length()) {
-    if (!check_auth_result_and_get_jwt(result.c_str())) {
+  if (result.length())
+  {
+    if (!check_auth_result_and_get_jwt(result.c_str()))
+    {
       return false;
     }
   }
-  else {
-      ESP.restart();
+  else
+  {
+    ESP.restart();
   }
   return true;
 }
@@ -273,12 +293,11 @@ void http_server_get_credentials()
 
           if (!line.length() || !check_data_json(line.c_str(), CHECK))
             send_response(&client, "HTTP/1.0 400 Bad Request", "{\"error\":true,\"error_msg\": \"Data invalid\"}");
-          else {
-            send_response(&client, "HTTP/1.0 200 OK", "{\"success\":\"Device received data\",\"error\":false}");
+          else
+          {
+            send_response(&client, "HTTP/1.0 200 OK", "{\"msg\":\"Device received data\",\"error\":false}");
             client.stop();
-            WiFi.enableAP(false);
-            Serial.println("Restart..");
-            ESP.restart();
+            return;
           }
         }
       }
@@ -290,63 +309,77 @@ void http_server_get_credentials()
   }
 }
 
-bool get_json_from_eeprom() {
+bool get_json_from_eeprom()
+{
   int i = 0;
   String json = "";
 
-  while (true) {
+  while (true)
+  {
     char c = char(EEPROM.read(i));
-    if (c == 255) {
+    if (c == 255)
+    {
       break;
     }
     json += String(c);
     i++;
   }
-  if (!json.length() || !check_data_json(json.c_str(), GET)) {
+  if (!json.length() || !check_data_json(json.c_str(), GET))
+  {
     return false;
   }
   return true;
 }
 
+bool connect_to_server()
+{
+  if (get_json_from_eeprom())
+  {
+    if (!WiFi_login() || !http_server_authentication())
+    {
+      save_to_eeprom("");
+      ESP.restart();
+    }
+    else
+    {
+      Serial.print("socket connection");
+      socket_connection(); //Connect to socket server
+    }
+    return true;
+  }
+  return false;
+}
+
 void setup()
 {
+  pinMode(relaisPin, OUTPUT);
   EEPROM.begin(1024);
   Serial.begin(115200); // Start the Serial communication to send messages to the computer
-  // Serial.setDebugOutput(true);
-  // save_to_eeprom("");
+  struct rst_info *resetInfo = ESP.getResetInfoPtr();
+  if (resetInfo->reason == REASON_EXT_SYS_RST)
+  {
+    save_to_eeprom("");
+  }
   Serial.print("Starting");
   Serial.println(" ...");
   WiFi.enableAP(false);
   WiFi.enableSTA(false);
-  if (get_json_from_eeprom()) {
-    WiFi_login();
-    pinMode(relaisPin, OUTPUT);
-    if (!http_server_authentication()) {
-      save_to_eeprom("");
-      ESP.restart();
-    }
-    else {
-      Serial.print("socket connection");
-      socket_connection(); //Connect to socket server
-    }
-    Serial.printf("mac address: %s\n", WiFi.macAddress().c_str());
-  }
-  else {
-    Serial.print("access point: ");
+  // save_to_eeprom("");
+  if (!connect_to_server())
+  {
     WiFi_AP();
     http_server_get_credentials();
+    connect_to_server();
   }
 }
 
 void loop()
 {
-  if (WiFi.status() != WL_CONNECTED) { //Reconnect to WiFi if connection lost
+  if (WiFi.status() != WL_CONNECTED)
+  { //Reconnect to WiFi if connection lost
     Serial.println("reconnect to wifi");
-    socket.disconnect();
     WiFi_login();
-    http_server_authentication();
-    socket_connection();
+    ESP.restart();
   }
   socket.loop();
-  // Serial.printf("socket_authenticated: %d\n", socket_authenticated);
 }

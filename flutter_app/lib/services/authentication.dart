@@ -154,7 +154,7 @@ class Auth implements BaseAuth {
       throw new Exception(result["error_msg"]);
     }
 
-    return result["success"];
+    return result["msg"];
   }
   
 
