@@ -36,6 +36,7 @@ unsigned long currentTime = millis();
 // Previous time
 unsigned long previousTime = 0;
 const long timeoutTime = 2000;
+const long timeoutTimeWiFi = 60000;
 const long timeoutTimeSocketAuth = 15000;
 
 String ssid = "";
@@ -140,15 +141,18 @@ bool WiFi_login()
   WiFi.enableAP(false);
   WiFi.begin(ssid, passwordWifi); // Connect to the network
   int i = 0;
+  currentTime = millis();
+  previousTime = currentTime;
   while (WiFi.status() != WL_CONNECTED)
   { // Wait for the Wi-Fi to connect
-    if (WiFi.status() == WL_CONNECT_FAILED)
+    if ((WiFi.status() == WL_CONNECT_FAILED) || (currentTime - previousTime >= timeoutTimeWiFi))
     {
       return false;
     }
     delay(1000);
     Serial.print(++i);
     Serial.print(' ');
+    currentTime = millis();
   }
   Serial.println();
   return true;
