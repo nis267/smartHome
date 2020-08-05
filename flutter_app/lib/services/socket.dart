@@ -113,10 +113,10 @@ class SocketService {
     socket.emit('leaveUserRoom', {'room_id': roomId});
   }
 
-  sendAction(socketId, state) async {
+  sendAction(socketId) async {
     print("socketId: ");
     print(socketId);
-    socket.emit('setAction', {'socket_id': socketId, 'state': state});
+    socket.emit('setAction', {'socket_id': socketId});
   }
   // Future <bool>sendAction(socketId, state) async {
   //   Completer<bool> c = new Completer();

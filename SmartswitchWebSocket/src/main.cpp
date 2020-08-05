@@ -7,6 +7,7 @@
 #include <ESP8266HTTPClient.h>
 
 #define NODEBUG_SOCKETIOCLIENT
+#define COMMON_ANODE
 
 bool http_server_authentication();
 
@@ -42,10 +43,27 @@ String passwordWifi = "";
 String serverAddress = "";
 String passwordServer = "";
 String jwt = "";
+String ap_name = "smartHome_" + String(random(1000, 9999));
 int serverPort = 8080;
 int relais = 0;
-int relaisPin = 5;
+int relaisPin = D1;
 bool socket_authenticated = true;
+
+uint8_t red_light_pin = D5;
+uint8_t green_light_pin = D6;
+uint8_t blue_light_pin = D7;
+
+void RGB_color(int red_light_value, int green_light_value, int blue_light_value)
+{
+    #ifdef COMMON_ANODE
+    red_light_value = 1024 - red_light_value;
+    green_light_value = 1024 - green_light_value;
+    blue_light_value = 1024 - blue_light_value;
+    #endif
+    analogWrite(red_light_pin, red_light_value);
+    analogWrite(green_light_pin, green_light_value);
+    analogWrite(blue_light_pin, blue_light_value);
+}
 
 String buildObject()
 {
@@ -65,16 +83,8 @@ void getInit(const char *payload, size_t length)
 
 void action(const char *payload, size_t length)
 {
-  if (atoi(payload) == HIGH && digitalRead(relaisPin) == LOW)
-  {
-    digitalWrite(relaisPin, HIGH);
-    socket.emit("state", buildObject().c_str());
-  }
-  else if (atoi(payload) == LOW && digitalRead(relaisPin) == HIGH)
-  {
-    digitalWrite(relaisPin, LOW);
-    socket.emit("state", buildObject().c_str());
-  }
+  digitalWrite(relaisPin, !digitalRead(relaisPin));
+  socket.emit("state", buildObject().c_str());
 }
 
 void authenticate(const char *payload, size_t length)
@@ -91,11 +101,14 @@ void authenticate(const char *payload, size_t length)
 void authenticated(const char *payload, size_t length)
 {
   socket_authenticated = true;
+  RGB_color(0, 1024, 0); // Green
 }
 
 void disconnect(const char *payload, size_t length)
 {
   socket_authenticated = false;
+  RGB_color(1024, 1024, 0); // Yellow
+
 }
 
 void socket_connection()
@@ -148,7 +161,6 @@ void WiFi_AP()
   Serial.println();
 
   Serial.print("Setting soft-AP ... ");
-  String ap_name = "smartHome_" + String(random(1000, 9999));
   if (!WiFi.softAP(ap_name.c_str(), NULL))
   {
     Serial.println("Failed!");
@@ -338,7 +350,8 @@ bool connect_to_server()
     if (!WiFi_login() || !http_server_authentication())
     {
       save_to_eeprom("");
-      ESP.restart();
+      RGB_color(1024, 0, 0); // Red
+      return false;
     }
     else
     {
@@ -352,24 +365,34 @@ bool connect_to_server()
 
 void setup()
 {
-  pinMode(relaisPin, OUTPUT);
   EEPROM.begin(1024);
   Serial.begin(115200); // Start the Serial communication to send messages to the computer
+  Serial.print("Starting");
+  Serial.println(" ...");
+  pinMode(relaisPin, OUTPUT);
+  pinMode(red_light_pin, OUTPUT);
+  pinMode(green_light_pin, OUTPUT);
+  pinMode(blue_light_pin, OUTPUT);
+  WiFi.enableAP(false);
+  WiFi.enableSTA(false);
   struct rst_info *resetInfo = ESP.getResetInfoPtr();
   if (resetInfo->reason == REASON_EXT_SYS_RST)
   {
     save_to_eeprom("");
+    RGB_color(0, 0, 1024); // Blue
   }
-  Serial.print("Starting");
-  Serial.println(" ...");
-  WiFi.enableAP(false);
-  WiFi.enableSTA(false);
-  // save_to_eeprom("");
-  if (!connect_to_server())
+  else if (resetInfo->reason != REASON_DEFAULT_RST)
+  {
+    RGB_color(1024, 1024, 0); // Yellow
+  }
+  else
+  {
+    RGB_color(0, 0, 1024); // Blue
+  }
+  while (!connect_to_server())
   {
     WiFi_AP();
     http_server_get_credentials();
-    connect_to_server();
   }
 }
 
@@ -378,6 +401,7 @@ void loop()
   if (WiFi.status() != WL_CONNECTED)
   { //Reconnect to WiFi if connection lost
     Serial.println("reconnect to wifi");
+    RGB_color(1024, 1024, 0); // Yellow
     WiFi_login();
     ESP.restart();
   }

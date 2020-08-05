@@ -369,7 +369,7 @@ class _Page1State extends State<RoomPage> {
                               if (deviceExist) {
                                 if (device.socketId != null) {
                                   socketService
-                                      .sendAction(device.socketId, device.state);
+                                      .sendAction(device.socketId);
                                       // .then((ack) => {
                                             showSnackBarText(
                                                 context,

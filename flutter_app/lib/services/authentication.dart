@@ -33,7 +33,7 @@ abstract class BaseAuth {
 
   // Future<List<Device>> getDeviceModelData();
 
-  Future<void> sendAction(String socketId, int state);
+  Future<void> sendAction(String socketId);
 }
 
 Future<dynamic> getJsonFromJWT(String token) async {
@@ -190,10 +190,10 @@ class Auth implements BaseAuth {
     return users[0];
   }
 
-  Future<void> sendAction(String socketId, int state) async {
+  Future<void> sendAction(String socketId) async {
     final SocketService socketService = injector.get<SocketService>();
 
-    socketService.sendAction(socketId, state);
+    socketService.sendAction(socketId);
   }
 
   Future<void> signOut() async {

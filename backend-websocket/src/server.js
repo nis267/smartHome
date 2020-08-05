@@ -365,10 +365,8 @@ const initEngine = (io) => {
     });
 
     socket.on('setAction', async (object) => {
-      const state = object.state == 1 ? 0 : 1;
       const socket_id_split = object.socket_id.split('#')[1];
-      io.to(socket_id_split).emit('action', state);
-      // callback(true);
+      io.to(socket_id_split).emit('action');
     });
 
     socket.on('updateRoomName', async (object) => {
