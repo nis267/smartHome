@@ -135,7 +135,7 @@ void save_to_eeprom(const char *line)
   EEPROM.commit();
 }
 
-bool WiFi_login()
+bool WiFi_login(bool authentication)
 {
   WiFi.enableSTA(true);
   WiFi.enableAP(false);
@@ -145,7 +145,7 @@ bool WiFi_login()
   previousTime = currentTime;
   while (WiFi.status() != WL_CONNECTED)
   { // Wait for the Wi-Fi to connect
-    if ((WiFi.status() == WL_CONNECT_FAILED) || (currentTime - previousTime >= timeoutTimeWiFi))
+    if ((WiFi.status() == WL_CONNECT_FAILED) || (authentication && (currentTime - previousTime >= timeoutTimeWiFi)))
     {
       return false;
     }
@@ -351,7 +351,7 @@ bool connect_to_server()
 {
   if (get_json_from_eeprom())
   {
-    if (!WiFi_login() || !http_server_authentication())
+    if (!WiFi_login(true) || !http_server_authentication())
     {
       save_to_eeprom("");
       RGB_color(1024, 0, 0); // Red
@@ -406,7 +406,7 @@ void loop()
   { //Reconnect to WiFi if connection lost
     Serial.println("reconnect to wifi");
     RGB_color(1024, 1024, 0); // Yellow
-    WiFi_login();
+    WiFi_login(false);
     ESP.restart();
   }
   socket.loop();
