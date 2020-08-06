@@ -38,6 +38,7 @@ unsigned long previousTime = 0;
 const long timeoutTime = 2000;
 const long timeoutTimeWiFi = 60000;
 const long timeoutTimeSocketAuth = 15000;
+const long timeoutTimeLedReady = 10000;
 
 String ssid = "";
 String passwordWifi = "";
@@ -48,7 +49,10 @@ String ap_name = "smartHome_" + String(random(1000, 9999));
 int serverPort = 8080;
 int relais = 0;
 int relaisPin = D1;
-bool socket_authenticated = true;
+bool socket_authenticated = false;
+bool socket_disconnected = false;
+bool led_on = true;
+bool valid_credentials = false;
 
 uint8_t red_light_pin = D5;
 uint8_t green_light_pin = D6;
@@ -90,7 +94,7 @@ void action(const char *payload, size_t length)
 
 void authenticate(const char *payload, size_t length)
 {
-  if (!socket_authenticated)
+  if (socket_disconnected)
   {
     ESP.restart();
   }
@@ -103,11 +107,14 @@ void authenticated(const char *payload, size_t length)
 {
   socket_authenticated = true;
   RGB_color(0, 1024, 0); // Green
+  currentTime = millis();
+  previousTime = currentTime;
 }
 
 void disconnect(const char *payload, size_t length)
 {
   socket_authenticated = false;
+  socket_disconnected = true;
   RGB_color(1024, 1024, 0); // Yellow
 
 }
@@ -145,7 +152,7 @@ bool WiFi_login(bool authentication)
   previousTime = currentTime;
   while (WiFi.status() != WL_CONNECTED)
   { // Wait for the Wi-Fi to connect
-    if ((WiFi.status() == WL_CONNECT_FAILED) || (authentication && (currentTime - previousTime >= timeoutTimeWiFi)))
+    if ((WiFi.status() == WL_CONNECT_FAILED) || (!valid_credentials && authentication && (currentTime - previousTime >= timeoutTimeWiFi)))
     {
       return false;
     }
@@ -349,7 +356,7 @@ bool get_json_from_eeprom()
 
 bool connect_to_server()
 {
-  if (get_json_from_eeprom())
+  if (valid_credentials || get_json_from_eeprom())
   {
     if (!WiFi_login(true) || !http_server_authentication())
     {
@@ -383,10 +390,10 @@ void setup()
   if (resetInfo->reason == REASON_EXT_SYS_RST)
   {
     save_to_eeprom("");
-    RGB_color(0, 0, 1024); // Blue
   }
-  else if (resetInfo->reason != REASON_DEFAULT_RST)
+  if (get_json_from_eeprom())
   {
+    valid_credentials = true;
     RGB_color(1024, 1024, 0); // Yellow
   }
   else
@@ -398,6 +405,7 @@ void setup()
     WiFi_AP();
     http_server_get_credentials();
   }
+
 }
 
 void loop()
@@ -410,4 +418,10 @@ void loop()
     ESP.restart();
   }
   socket.loop();
+  if (led_on && socket_authenticated && ((currentTime - previousTime) >= timeoutTimeLedReady))
+  {
+    RGB_color(0, 0, 0);
+    led_on = false;
+  }
+  currentTime = millis();
 }

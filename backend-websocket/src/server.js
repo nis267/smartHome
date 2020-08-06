@@ -1,9 +1,7 @@
 import express from 'express';
 import SocketIO from 'socket.io';
-// import connection from '.db.js';
 import connection from './db.js';
 import socketioAuth from 'socketio-auth';
-import jwtAuth from 'socketio-jwt-auth';
 import socketioJwt from 'socketio-jwt';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';

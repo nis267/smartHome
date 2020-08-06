@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/models/device.dart';
 import 'package:flutter_app/models/room.dart';
+import 'package:flutter_app/services/snackBarText.dart';
 import 'package:flutter_simple_dependency_injection/injector.dart';
 import 'package:flutter_app/services/socket.dart';
 import 'dart:async';
@@ -39,6 +40,7 @@ class RoomPage extends StatefulWidget {
 class _Page1State extends State<RoomPage> {
   final injector = Injector.getInjector();
   SocketService socketService;
+  SnackbarText _snackbarText = new SnackbarText();
   // List<Room> _roomList = [];
 
   @override
@@ -176,7 +178,7 @@ class _Page1State extends State<RoomPage> {
                               currentSelectedName.toString(),
                               currentSelectedRoom.id.toInt()
                             ]);
-                            showSnackBarText(
+                            _snackbarText.showSnackBarText(
                                 contextScafold, name + ' is modified');
                           }
                         },
@@ -208,12 +210,12 @@ class _Page1State extends State<RoomPage> {
     );
   }
 
-  void showSnackBarText(BuildContext context, String text) {
-    final snackBar =
-        SnackBar(content: Text(text), duration: Duration(milliseconds: 2000));
-    Scaffold.of(context).removeCurrentSnackBar();
-    Scaffold.of(context).showSnackBar(snackBar);
-  }
+  // void _snackbarText.showSnackBarText(BuildContext context, String text) {
+  //   final snackBar =
+  //       SnackBar(content: Text(text), duration: Duration(milliseconds: 2000));
+  //   Scaffold.of(context).removeCurrentSnackBar();
+  //   Scaffold.of(context).showSnackBar(snackBar);
+  // }
 
   Future<Device> createDialogRemoveDevice(
       BuildContext contextScafold, Device device) async {
@@ -371,7 +373,7 @@ class _Page1State extends State<RoomPage> {
                                   socketService
                                       .sendAction(device.socketId);
                                       // .then((ack) => {
-                                            showSnackBarText(
+                                            _snackbarText.showSnackBarText(
                                                 context,
                                                 (device.name != null ? device.name : device.macAddress) +
                                                     ' is ' +
@@ -381,11 +383,11 @@ class _Page1State extends State<RoomPage> {
                                           // });
                                   setState(() {});
                                 } else {
-                                  showSnackBarText(context,
+                                  _snackbarText.showSnackBarText(context,
                                       device.name + ' is not connected');
                                 }
                               } else {
-                                showSnackBarText(
+                                _snackbarText.showSnackBarText(
                                     context,
                                     'Device ' +
                                         (device.name == null
@@ -404,7 +406,7 @@ class _Page1State extends State<RoomPage> {
                                 if (onValue != null) {
                                   socketService.removeDeviceFromRoom(
                                       onValue.id, widget.room.id);
-                                  showSnackBarText(
+                                  _snackbarText.showSnackBarText(
                                       context,
                                       (onValue.name == null
                                               ? onValue.macAddress
@@ -414,7 +416,7 @@ class _Page1State extends State<RoomPage> {
                                 }
                               });
                             } else {
-                              showSnackBarText(
+                              _snackbarText.showSnackBarText(
                                   context,
                                   'Device ' +
                                       (device.name == null
@@ -435,7 +437,7 @@ class _Page1State extends State<RoomPage> {
                                       onValue[0], onValue[1], widget.room.id);
                               });
                             } else {
-                              showSnackBarText(
+                              _snackbarText.showSnackBarText(
                                   context,
                                   'Device ' +
                                       (device.name == null

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_app/pages/app_drawer.dart';
 import 'package:flutter_app/services/authentication.dart';
-import 'package:flutter_app/services/http_request.dart';
+import 'package:flutter_app/services/snackBarText.dart';
 import 'package:flutter_app/services/socket.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_simple_dependency_injection/injector.dart';
@@ -27,6 +27,7 @@ class _SettingsPageState extends State<SettingsPage> {
   final injector = Injector.getInjector();
   SocketService socketService;
   final storage = new FlutterSecureStorage();
+  SnackbarText _snackbarText = new SnackbarText();
 
   @override
   void initState() {
@@ -68,7 +69,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 child: Text('Copy password to clipboard'),
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: password));
-                  Navigator.of(context).pop();
+                  Navigator.of(context).pop(true);
                 },
               ),
             ],
@@ -125,7 +126,12 @@ class _SettingsPageState extends State<SettingsPage> {
                         await socketService.getDeviceNewPassword();
                     print("password: ");
                     print(password);
-                    createDialogGenerateNewPasswordDevice(context, password);
+                    createDialogGenerateNewPasswordDevice(context, password).then((value) {
+                      if (value != null && value == true)
+                      {
+                        _snackbarText.showSnackBarText(context, 'Password copied to clipboard');
+                      }
+                    });
                     // _netUtil.post(url)
                   },
                 ),

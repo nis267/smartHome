@@ -8,6 +8,7 @@ import 'package:flutter_app/pages/room_page.dart';
 import 'package:flutter_app/services/authentication.dart';
 import 'package:flutter_app/services/socket.dart';
 import 'package:flutter_simple_dependency_injection/injector.dart';
+import 'package:flutter_app/services/snackBarText.dart';
 
 class HomeRoomsPage extends StatefulWidget {
   HomeRoomsPage(
@@ -25,6 +26,7 @@ class HomeRoomsPage extends StatefulWidget {
 }
 
 class _HomeRoomsPageState extends State<HomeRoomsPage> {
+  SnackbarText _snackbarText = new SnackbarText();
   final injector = Injector.getInjector();
   SocketService socketService;
   List<Room> roomsList = [];
@@ -63,12 +65,12 @@ class _HomeRoomsPageState extends State<HomeRoomsPage> {
     );
   }
 
-  void showSnackBarText(BuildContext context, String text) {
-    final snackBar =
-        SnackBar(content: Text(text), duration: Duration(milliseconds: 2000));
-    Scaffold.of(context).removeCurrentSnackBar();
-    Scaffold.of(context).showSnackBar(snackBar);
-  }
+  // void _snackbarText.showSnackBarText(BuildContext context, String text) {
+  //   final snackBar =
+  //       SnackBar(content: Text(text), duration: Duration(milliseconds: 2000));
+  //   Scaffold.of(context).removeCurrentSnackBar();
+  //   Scaffold.of(context).showSnackBar(snackBar);
+  // }
 
   Future<Room> createDialogUpdateRoom(
       BuildContext contextScafold, Room room) async {
@@ -92,7 +94,7 @@ class _HomeRoomsPageState extends State<HomeRoomsPage> {
                   final form = _formKey.currentState;
                   if (form.validate()) {
                     form.save();
-                    showSnackBarText(
+                    _snackbarText.showSnackBarText(
                         contextScafold, room.name + ' is modified');
                     Navigator.of(context)
                         .pop(new Room(id: room.id, name: currentSelectedName));
@@ -125,7 +127,7 @@ class _HomeRoomsPageState extends State<HomeRoomsPage> {
                   final form = _formKey.currentState;
                   if (form.validate()) {
                     form.save();
-                    showSnackBarText(
+                    _snackbarText.showSnackBarText(
                         contextScafold, currentSelectedName + ' is added');
                     Navigator.of(context).pop(currentSelectedName);
                   }
@@ -153,7 +155,7 @@ class _HomeRoomsPageState extends State<HomeRoomsPage> {
               FlatButton(
                   child: Text('Yes'),
                   onPressed: () {
-                    showSnackBarText(contextScafold, room.name + ' is deleted');
+                    _snackbarText.showSnackBarText(contextScafold, room.name + ' is deleted');
                     Navigator.of(context).pop(room);
                   }),
             ],
@@ -224,7 +226,7 @@ class _HomeRoomsPageState extends State<HomeRoomsPage> {
                                     });
                                     }
                                     else {
-                                      showSnackBarText(context, room.name + ' not available');
+                                      _snackbarText.showSnackBarText(context, room.name + ' not available');
                                     }
                                   },
                                 ),
@@ -244,7 +246,7 @@ class _HomeRoomsPageState extends State<HomeRoomsPage> {
                                             });
                                     }
                                     else {
-                                      showSnackBarText(context, 'Room ' + room.name + ' is busy');
+                                      _snackbarText.showSnackBarText(context, 'Room ' + room.name + ' is busy');
                                     }
                                   },
                                 )
@@ -271,7 +273,7 @@ class _HomeRoomsPageState extends State<HomeRoomsPage> {
                               }
                               });
                               } else {
-                                showSnackBarText(context, room.name + ' not available');
+                                _snackbarText.showSnackBarText(context, room.name + ' not available');
                               }
                             },
                           )
