@@ -1,11 +1,3 @@
-// import express from 'express';
-// import SocketIO from 'socket.io';
-// import connection from './db.js';
-// import socketioAuth from 'socketio-auth';
-// import socketioJwt from 'socketio-jwt';
-// import jwt from 'jsonwebtoken';
-// import bcrypt from 'bcrypt';
-// import generator from 'generate-password';
 var express = require('express');
 var SocketIO = require('socket.io');
 var connection = require('./db.js');
@@ -246,7 +238,7 @@ connection.query('CREATE TABLE IF NOT EXISTS room(id INT AUTO_INCREMENT PRIMARY 
   }
 };
 
-connection.query('CREATE TABLE IF NOT EXISTS device(id INT AUTO_INCREMENT PRIMARY KEY, room_id INT NULL, name VARCHAR(255), password VARCHAR(60) NOT NULL, mac_address VARCHAR(17), socket_id VARCHAR(27), state BOOLEAN DEFAULT FALSE, CONSTRAINT fk_room_device FOREIGN KEY(room_id) REFERENCES room (id) ON DELETE SET NULL)'), function (error, results, fields) {
+connection.query('CREATE TABLE IF NOT EXISTS device(id INT AUTO_INCREMENT PRIMARY KEY, room_id INT NULL, name VARCHAR(255), password VARCHAR(60) NOT NULL, mac_address VARCHAR(17), socket_id VARCHAR(29), state BOOLEAN DEFAULT FALSE, CONSTRAINT fk_room_device FOREIGN KEY(room_id) REFERENCES room (id) ON DELETE SET NULL)'), function (error, results, fields) {
   if (error) {
     // throw error;
     console.log("error: ", error);
