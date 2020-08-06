@@ -1,4 +1,5 @@
-import mysql from 'mysql'
+// import mysql from 'mysql'
+var mysql = require('mysql');
 
 var connection =  mysql.createConnection({
     host: 'localhost',
@@ -8,4 +9,5 @@ var connection =  mysql.createConnection({
     charset : 'utf8mb4'
 });
 
-export default connection;
+// export default connection;
+module.exports = connection;

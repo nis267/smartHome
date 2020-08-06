@@ -1,11 +1,19 @@
-import express from 'express';
-import SocketIO from 'socket.io';
-import connection from './db.js';
-import socketioAuth from 'socketio-auth';
-import socketioJwt from 'socketio-jwt';
-import jwt from 'jsonwebtoken';
-import bcrypt from 'bcrypt';
-import generator from 'generate-password';
+// import express from 'express';
+// import SocketIO from 'socket.io';
+// import connection from './db.js';
+// import socketioAuth from 'socketio-auth';
+// import socketioJwt from 'socketio-jwt';
+// import jwt from 'jsonwebtoken';
+// import bcrypt from 'bcrypt';
+// import generator from 'generate-password';
+var express = require('express');
+var SocketIO = require('socket.io');
+var connection = require('./db.js');
+var socketioAuth = require('socketio-auth');
+var socketioJwt = require('socketio-jwt');
+var jwt = require('jsonwebtoken');
+var bcrypt = require('bcrypt');
+var generator = require('generate-password');
 
 const secret_user = 'smarthome_user';
 const secret_device = 'smarthome_device';
