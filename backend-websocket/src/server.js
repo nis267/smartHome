@@ -12,13 +12,41 @@ const secret_user = 'smarthome_user';
 const secret_device = 'smarthome_device';
 const saltRounds = 10;
 
+const python_display_script_pid_file = '/tmp/server_smarthome/server_python_display_pid';
+const status_dir = '/tmp/server_smarthome/status/';
+const new_users_dir = '/tmp/server_smarthome/new_users/';
+const users_status_file = 'users';
+const devices_status_file = 'devices';
+
 let app = express();
 var server = app.listen(8080);
 
-// Parse URL-encoded bodies (as sent by HTML forms)
-// app.use(express.urlencoded());
+const send_hangup_to_python_script_display = () => {
+  try {
+    if (fs.existsSync(python_display_script_pid_file)) {
+      const pid = fs.readFileSync(python_display_script_pid_file, 'utf8');
+      process.kill(pid, "SIGHUP");
+      console.log("The file exists.");
+    } else {
+      console.log('The file does not exist.');
+    }
+  } catch (err) {
+    console.error(err);
+  }
+}
+const write_to_file = (dir, file, data) => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir);
+  }
+  try {
+    fs.writeFileSync(dir + file, data);
+    console.log("File written successfully");
+  } catch (err) {
+    console.error(err);
+  }
+  send_hangup_to_python_script_display();
+}
 
-// Parse JSON bodies (as sent by API clients)
 console.log('Server starting ...');
 app.use(express.json());
 
@@ -62,6 +90,17 @@ const mysqlQuery = (query, replacements) => {
   }
 }
 
+const delete_file = (path) => {
+  try {
+    if (fs.existsSync(path)) {
+      //file exists
+      fs.unlinkSync(path);
+    }
+  } catch(err) {
+    console.error(err)
+  }
+}
+
 app.post('/login', async (req, res) => {
   console.log("Login");
 
@@ -81,6 +120,11 @@ app.post('/login', async (req, res) => {
     }
   } else {
     return res.json({ error: true, error_msg: 'Wrong credentials' });
+  }
+  if (!user[0].activated) {
+    delete_file(new_users_dir + user[0].id);
+    console.log("file deleted");
+    await mysqlQuery('UPDATE user SET activated = TRUE WHERE id = ?', [user[0].id]);
   }
   var token = jwt.sign({ uid: user[0].id }, secret_user, { expiresIn: 86440 });
   return res.json({ error: false, token: token });
@@ -109,7 +153,7 @@ app.post('/login_device', async (req, res) => {
   } else {
     device = await mysqlQuery('SELECT * FROM device WHERE (mac_address IS NULL AND password IS NOT NULL) LIMIT 1');
     if (!device.length) {
-        return res.json({ error: true, error_msg: 'No password available' });
+      return res.json({ error: true, error_msg: 'No password available' });
     }
     const check = await bcrypt.compareSync(password, device[0].password);
     if (!check) {
@@ -185,6 +229,16 @@ async function withTransaction(connection, callback) {
   }
 }
 
+const delete_non_activated_user_timeout = async (user_id)  => {
+  console.log("delete user");
+  const user = await mysqlQuery('SELECT * FROM user WHERE id = ? AND activated = FALSE', [user_id]);
+  if (user.length) {
+    const result = await mysqlQuery('DELETE FROM user WHERE id = ?', [user_id]);
+    delete_file(new_users_dir + String(user_id));
+    send_hangup_to_python_script_display();
+  }
+}
+
 app.post('/signup', async (req, res) => {
   var username = req.body.username;
 
@@ -193,16 +247,18 @@ app.post('/signup', async (req, res) => {
     if (user.length) {
       return res.status(400).json({ error: true, error_msg: 'User already exists' });
     }
-    if (!user.length) {
-      const password = generator.generate({
-        length: 10,
-        numbers: true,
-      });
-      console.log("password: " + password);
-      const salt = await bcrypt.genSaltSync(saltRounds);
-      const hash = await bcrypt.hashSync(password, salt);
-      const response = await mysqlQuery('INSERT INTO user (name, password) VALUES (?, ?)', [username, hash]);
-    }
+    const password = generator.generate({
+      length: 10,
+      numbers: true,
+    });
+    console.log("password: " + password);
+    const salt = await bcrypt.genSaltSync(saltRounds);
+    const hash = await bcrypt.hashSync(password, salt);
+    await mysqlQuery('INSERT INTO user (name, password) VALUES (?, ?)', [username, hash]);
+    const new_user = await mysqlQuery('SELECT * FROM user WHERE name = ?', [username]);
+    console.log("result new user: ", new_user);
+    write_to_file(new_users_dir, String(new_user[0].id), new_user[0].name + "\n" + password);
+    setTimeout(delete_non_activated_user_timeout, 600000, new_user[0].id);
   } catch (err) {
     console.log("Error: " + err);
     return res.json({ error: true });
@@ -247,15 +303,13 @@ connection.query('CREATE TABLE IF NOT EXISTS device(id INT AUTO_INCREMENT PRIMAR
   }
 };
 
-connection.query('CREATE TABLE IF NOT EXISTS user(id INT AUTO_INCREMENT PRIMARY KEY, room_id INT NULL, name VARCHAR(255) NOT NULL, password VARCHAR(60) NOT NULL, socket_id VARCHAR(27), CONSTRAINT fk_room_user FOREIGN KEY(room_id) REFERENCES room (id) ON DELETE SET NULL)', function (error, results, fields) {
+connection.query('CREATE TABLE IF NOT EXISTS user(id INT AUTO_INCREMENT PRIMARY KEY, room_id INT NULL, name VARCHAR(255) NOT NULL, password VARCHAR(60) NOT NULL, socket_id VARCHAR(27), activated BOOLEAN DEFAULT FALSE, CONSTRAINT fk_room_user FOREIGN KEY(room_id) REFERENCES room (id) ON DELETE SET NULL)', function (error, results, fields) {
   if (error) {
     // throw error;
     console.log("error: ", error);
   } else if (results) {
   }
 });
-
-
 
 const initEngine = (io) => {
 
@@ -270,7 +324,7 @@ const initEngine = (io) => {
     // socket.emit('getInit');
     devices_nsp.to(socket.id).emit('getInit');
 
-      // socket.on('setAction', async (object) => {
+    // socket.on('setAction', async (object) => {
     //   const state = object.state == 1 ? 0 : 1;
     //   io.to(object.socket_id).emit('action', state);
     // });
@@ -292,6 +346,8 @@ const initEngine = (io) => {
           users_nsp.to(roomId).emit('stateChanged', roomId);
         }
       }
+      const status = await mysqlQuery('select count(socket_id) connected from device');
+      write_to_file(status_dir, devices_status_file, String(status[0].connected));
     });
 
     socket.on('setInit', async (object) => {
@@ -306,8 +362,10 @@ const initEngine = (io) => {
       if (roomId != null) {
         users_nsp.to(roomId).emit('stateChanged', roomId);
       }
+      const status = await mysqlQuery('select count(socket_id) connected from device');
+      write_to_file(status_dir, devices_status_file, String(status[0].connected));
     });
-  // });
+    // });
 
   });
 
@@ -357,6 +415,9 @@ const initEngine = (io) => {
       if (jwtString) {
         let user_id = jwt.decode(jwtString).uid;
         const results = await mysqlQuery(`UPDATE user SET socket_id = ? WHERE id = ?`, [socket.id, user_id]);
+        const status = await mysqlQuery('select count(socket_id) connected from user');
+        console.log("results: ", status[0].connected);
+        write_to_file(status_dir, users_status_file, String(status[0].connected));
       }
       else {
         socket.disconnect(true);
@@ -389,61 +450,18 @@ const initEngine = (io) => {
     socket.on('disconnect', async () => {
       console.log("User disconnect");
       const results = await mysqlQuery('UPDATE user SET room_id = NULL, socket_id = NULL WHERE socket_id = ?', [socket.id]);
+      const status = await mysqlQuery('select count(socket_id) connected from user');
+      write_to_file(status_dir, users_status_file, String(status[0].connected));  
     });
   })
-  .on('unauthorized', (msg) => {
-    console.log(`unauthorized: ${JSON.stringify(msg.data)}`);
-    // throw new Error(msg.data.type);
-  });
+    .on('unauthorized', (msg) => {
+      console.log(`unauthorized: ${JSON.stringify(msg.data)}`);
+      // throw new Error(msg.data.type);
+    });
 
-  io.on('connection', (socket) => {
-    console.log("io socketId: ", socket.id);
-
-  });
   // io.on('connection', (socket) => {
-  //   console.log('Device connected');
-  //   socket.emit('getInit');
+  //   console.log("io socketId: ", socket.id);
 
-
-  //   // users_nsp.emit('stateChanged');
-
-  //   // socket.on('setAction', async (object) => {
-  //   //   const state = object.state == 1 ? 0 : 1;
-  //   //   io.to(object.socket_id).emit('action', state);
-  //   // });
-
-  //   socket.on('state', async (object) => {
-  //     const result = await mysqlQuery('UPDATE device SET state = ? WHERE mac_address = ?', [object.state, object.mac]);
-  //     let results = await mysqlQuery('SELECT * FROM device WHERE mac_address = ? LIMIT 1', [object.mac]);
-  //     const roomId = results[0].room_id;
-  //     users_nsp.to(roomId).emit('stateChanged', roomId);
-  //   });
-
-  //   socket.on('disconnect', async () => {
-  //     console.log("device dissconnect");
-  //     let results = await mysqlQuery('SELECT * FROM device WHERE socket_id = ? LIMIT 1', [socket.id]);
-  //     if (results.length) {
-  //       const roomId = results[0].room_id;
-  //       let result = await mysqlQuery('UPDATE device SET socket_id = NULL, state = 0 WHERE socket_id = ?', [socket.id]);
-  //       if (roomId) {
-  //         users_nsp.to(roomId).emit('stateChanged', roomId);
-  //       }
-  //     }
-  //   });
-
-  //   socket.on('setInit', async (object) => {
-  //     var roomId = null;
-  //     let results = await mysqlQuery('SELECT * FROM device WHERE mac_address = ? LIMIT 1', [object.mac]);
-  //     if (results.length == 0) {
-  //       results = await mysqlQuery(`INSERT INTO device(mac_address, socket_id, state) VALUES(?, ?, ?)`, [object.mac, socket.id, object.state]);
-  //     } else {
-  //       roomId = results[0].room_id;
-  //       results = await mysqlQuery(`UPDATE device SET socket_id = ?, state = ? WHERE mac_address = ?`, [socket.id, object.state, object.mac]);
-  //     }
-  //     if (roomId != null) {
-  //       users_nsp.to(roomId).emit('stateChanged', roomId);
-  //     }
-  //   });
   // });
 };
 

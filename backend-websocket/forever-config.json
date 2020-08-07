@@ -1,0 +1,13 @@
+{
+  "uid": "myApp",
+  "max": 100,
+  "spinSleepTime": 1000,
+  "append": true,
+  "watch": true,
+  "command": "/home/pi/.nvm/versions/node/v14.5.0/bin/node",
+  "script": "server.js",
+  "sourceDir": "/home/pi/developpement/smartHome/backend-websocket/src",
+  "logFile": "/home/pi/developpement/smartHome/backend-websocket/forever-script-log.log",
+  "outFile": "/home/pi/developpement/smartHome/backend-websocket/forever-script-out.log",
+  "errFile": "/home/pi/developpement/smartHome/backend-websocket/forever-script-err.log"
+}
