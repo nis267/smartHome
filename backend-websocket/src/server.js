@@ -6,6 +6,7 @@ var socketioJwt = require('socketio-jwt');
 var jwt = require('jsonwebtoken');
 var bcrypt = require('bcrypt');
 var generator = require('generate-password');
+var fs = require('fs');
 
 const secret_user = 'smarthome_user';
 const secret_device = 'smarthome_device';

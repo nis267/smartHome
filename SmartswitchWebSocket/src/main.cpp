@@ -404,6 +404,7 @@ void setup()
   {
     WiFi_AP();
     http_server_get_credentials();
+    valid_credentials = false;
   }
 
 }
