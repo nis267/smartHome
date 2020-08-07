@@ -54,18 +54,16 @@ def get_users_devices_connected():
         f = open(users_status_file)
         status.users_connected_size = f.read()
         status.users_connected_str = "Connected users: " + str(status.users_connected_size)
-    except IOError:
-        print("File not accessible")
-    finally:
         f.close()
+    except IOError:
+        print("Users status file not accessible")
     try:
         f = open(devices_status_file)
         status.devices_connected_size = f.read()
         status.devices_connected_str = "Connected devices: " + str(status.devices_connected_size)
-    except IOError:
-        print("File not accessible")
-    finally:
         f.close()
+    except IOError:
+        print("Devices status file not accessible")
 
 
 def check_longest_length(string_to_check):
