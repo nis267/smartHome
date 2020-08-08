@@ -2,6 +2,7 @@ from luma.core.interface.serial import i2c, spi
 from luma.core.render import canvas
 from luma.oled.device import ssd1309
 from luma.core.virtual import viewport
+from PIL import Image, ImageDraw, ImageFont
 from time import sleep
 import subprocess
 import signal, os
@@ -25,7 +26,7 @@ def get_ip():
     return (ip)
 
 ip_str = "Host: " + get_ip()
-
+fnt = ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf")
 
 users_status_file = "/tmp/server_smarthome/status/users"
 devices_status_file = "/tmp/server_smarthome/status/devices"
@@ -81,9 +82,9 @@ def draw_default_output():
     check_longest_length(status.devices_connected_str)
     status.max_offset = status.longest_line_size + 1 - int((128/6))
     with canvas(virtual) as draw:
-        draw.text((0, 0), ip_str, fill="white")
-        draw.text((0, 10), status.users_connected_str, fill="white")
-        draw.text((0, 20), status.devices_connected_str, fill="white")
+        draw.text((0, 0), ip_str, font=fnt, fill="white")
+        draw.text((0, 10), status.users_connected_str, font=fnt, fill="white")
+        draw.text((0, 20), status.devices_connected_str, font=fnt, fill="white")
 
 def set_offset_position():
     if status.max_offset > 0:
@@ -114,9 +115,9 @@ def draw_new_users():
             # virtual.clear()
             virtual.set_position((0, 0))
             with canvas(virtual) as draw:
-                draw.text((0, 0), ip_str, fill="white")
-                draw.text((0, 10), name, fill="white")
-                draw.text((0, 20), password, fill="white")
+                draw.text((0, 0), ip_str, font=fnt, fill="white")
+                draw.text((0, 10), name, font=fnt, fill="white")
+                draw.text((0, 20), password, font=fnt, fill="white")
             status.max_offset = status.longest_line_size + 1 - int((128/6))
             i = 0
             while i < 2:
