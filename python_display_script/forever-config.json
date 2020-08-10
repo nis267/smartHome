@@ -1,0 +1,13 @@
+{
+  "uid": "python-display-script",
+  "max": 100,
+  "spinSleepTime": 1000,
+  "append": true,
+  "watch": true,
+  "command": "/usr/bin/python3",
+  "script": "screen.py",
+  "sourceDir": "/home/pi/smartHome/python_display_script",
+  "logFile": "/home/pi/smartHome/python_display_script/forever-script-log.log",
+  "outFile": "/home/pi/smartHome/python_display_script/forever-script-out.log",
+  "errFile": "/home/pi/smartHome/python_display_script/forever-script-err.log"
+}
