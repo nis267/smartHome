@@ -84,6 +84,8 @@ try:
     def terminate_process():
         if display.proc is not None:
             display.proc.terminate()
+            display.proc.join()
+            display.proc.close()
             display.proc = None
 
     def draw_output_to_display(first_line, seconde_line, third_line, previous, next):
@@ -228,10 +230,8 @@ try:
         main()
         
 except KeyboardInterrupt:
-    if display.proc:
-        display.proc.terminate()
+    terminate_process()
 finally:
     GPIO.cleanup()
-if display.proc is not None:
-        display.proc.terminate()
+terminate_process()
 GPIO.cleanup()
