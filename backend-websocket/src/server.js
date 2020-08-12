@@ -26,9 +26,6 @@ const send_hangup_to_python_script_display = () => {
     if (fs.existsSync(python_display_script_pid_file)) {
       const pid = fs.readFileSync(python_display_script_pid_file, 'utf8');
       process.kill(pid, "SIGHUP");
-      console.log("The file exists.");
-    } else {
-      console.log('The file does not exist.');
     }
   } catch (err) {
     console.error(err);
@@ -40,7 +37,7 @@ const write_to_file = (dir, file, data) => {
   }
   try {
     fs.writeFileSync(dir + file, data);
-    console.log("File written successfully");
+    console.log(`File ${file} written successfully`);
   } catch (err) {
     console.error(err);
   }
