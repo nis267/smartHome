@@ -35,6 +35,7 @@ try:
     def get_ip():
         p = subprocess.Popen(("hostname", "-I"),stdout=subprocess.PIPE)
         ip = subprocess.check_output(('awk', "{print $1}"), stdin=p.stdout, universal_newlines=True)
+        ip = ip.rstrip()
         return (ip)
     
     currentUserCredentials = CurrentUserCredentials()
@@ -78,61 +79,82 @@ try:
             print("Devices status file not accessible")
 
     def get_default_output():
-        # virtual.set_position((0, 0))
         get_users_devices_connected()
+
+    def terminate_process():
+        if display.proc is not None:
+            display.proc.terminate()
+            display.proc = None
+
+    def draw_output_to_display(first_line, seconde_line, third_line, previous, next):
+        with canvas(device) as draw:
+            draw.text((0, 0), first_line, font=fnt, fill="white")
+            draw.text((0, 10), seconde_line, font=fnt, fill="white")
+            draw.text((0, 20), third_line, font=fnt, fill="white")
+            if previous is not False:
+                draw.text((0, 50), "previous", font=fnt, fill="white")
+            if next is not False:
+                draw.text((105, 50), "next", font=fnt, fill="white")
 
     def draw_offset_position(line, line_nbr):
         i = 0
+        first_line = None
+        seconde_line = None
+        third_line = None
+        previous = False
+        next = False
         while i < len(line) + 1 - int((128/6)):
-            with canvas(device) as draw:
-                if line_nbr == 1:
-                    draw.text((0, 0), display.first_line[i:], font=fnt, fill="white")
-                else:
-                    draw.text((0, 0), display.first_line, font=fnt, fill="white")
-                if line_nbr == 2:
-                    draw.text((0, 10), display.seconde_line[i:], font=fnt, fill="white")
-                else:
-                    draw.text((0, 10), display.seconde_line, font=fnt, fill="white")
-                if line_nbr == 3:
-                    draw.text((0, 20), display.third_line[i:], font=fnt, fill="white")
-                else:
-                    draw.text((0, 20), display.third_line, font=fnt, fill="white")
+            if line_nbr == 1:
+                first_line = display.first_line[i:]
+            else:
+                first_line = display.first_line
+            if line_nbr == 2:
+                seconde_line = display.seconde_line[i:]
+            else:
+                seconde_line = display.seconde_line
+            if line_nbr == 3:
+                third_line = display.third_line[i:]
+            else:
+                third_line = display.third_line
+            if currentUserCredentials.dir_list and len(currentUserCredentials.dir_list) > 0:
                 if currentUserCredentials.dir_list.index(currentUserCredentials.filename) == 0 and len(currentUserCredentials.dir_list) > 1:
-                    draw.text((105, 50), "next", font=fnt, fill="white")
+                    previous = False
+                    next = True
                 elif currentUserCredentials.dir_list.index(currentUserCredentials.filename) >= 1 and currentUserCredentials.dir_list.index(currentUserCredentials.filename) < len(currentUserCredentials.dir_list) - 1:
-                    draw.text((0, 50), "previous", font=fnt, fill="white")
-                    draw.text((105, 50), "next", font=fnt, fill="white")
+                    previous = True
+                    next = True
                 elif len(currentUserCredentials.dir_list) > 1:
-                    draw.text((0, 50), "previous", font=fnt, fill="white")
+                    previous = True
+            draw_output_to_display(first_line, seconde_line, third_line, previous, next)
             sleep(0.3)
             i += 1
         sleep(2)
 
     
     def draw_output_without_offset():
-        with canvas(device) as draw:
-            draw.text((0, 0), display.first_line, font=fnt, fill="white")
-            draw.text((0, 10), display.seconde_line, font=fnt, fill="white")
-            draw.text((0, 20), display.third_line, font=fnt, fill="white")
-            if currentUserCredentials.dir_list and len(currentUserCredentials.dir_list) > 0:
-                if currentUserCredentials.dir_list.index(currentUserCredentials.filename) == 0 and len(currentUserCredentials.dir_list) > 1:
-                    draw.text((105, 50), "next", font=fnt, fill="white")
-                elif currentUserCredentials.dir_list.index(currentUserCredentials.filename) >= 1 and currentUserCredentials.dir_list.index(currentUserCredentials.filename) < len(currentUserCredentials.dir_list) - 1:
-                    draw.text((0, 50), "previous", font=fnt, fill="white")
-                    draw.text((105, 50), "next", font=fnt, fill="white")
-                elif len(currentUserCredentials.dir_list) > 1:
-                    draw.text((0, 50), "previous", font=fnt, fill="white")
+        previous = False
+        next = False
+
+        if currentUserCredentials.dir_list and len(currentUserCredentials.dir_list) > 0:
+            if currentUserCredentials.dir_list.index(currentUserCredentials.filename) == 0 and len(currentUserCredentials.dir_list) > 1:
+                next = True
+            elif currentUserCredentials.dir_list.index(currentUserCredentials.filename) >= 1 and currentUserCredentials.dir_list.index(currentUserCredentials.filename) < len(currentUserCredentials.dir_list) - 1:
+                previous = True
+                next = True
+            elif len(currentUserCredentials.dir_list) > 1:
+                previous = True
+        draw_output_to_display(display.first_line, display.seconde_line, display.third_line, previous, next)
 
     def draw_output():
         enter = False
         while True:
-            if (len(display.first_line) + 1 - int((128/6))) > 0:
+            if (len(display.first_line) - int((128/6))) > 0:
                 enter = True
                 draw_offset_position(display.first_line, 1)
-            if (len(display.seconde_line) + 1 - int((128/6))) > 0:
+            if (len(display.seconde_line) - int((128/6))) > 0:
                 enter = True
                 draw_offset_position(display.seconde_line, 2)
-            if (len(display.third_line) + 1 - int((128/6))) > 0:
+            if (len(display.third_line) - int((128/6))) > 0:
                 enter = True
                 draw_offset_position(display.third_line, 3)
             if enter == False:
@@ -155,15 +177,12 @@ try:
     def button_left_callback(channel):
         if currentUserCredentials.dir_list.index(currentUserCredentials.filename) > 0:
             get_new_user(currentUserCredentials.dir_list[currentUserCredentials.dir_list.index(currentUserCredentials.filename) - 1])
-            display.proc.terminate()
-            display.proc = None
+            terminate_process()
 
     def button_right_callback(channel):
         if currentUserCredentials.dir_list.index(currentUserCredentials.filename) < len(currentUserCredentials.dir_list) - 1:
             get_new_user(currentUserCredentials.dir_list[currentUserCredentials.dir_list.index(currentUserCredentials.filename) + 1])
-            display.proc.terminate()
-            display.proc = None
-
+            terminate_process()
     
     def prepare_output():
         if os.path.isdir(new_users_dir) and len(os.listdir(new_users_dir)):
@@ -185,9 +204,9 @@ try:
             get_default_output()
 
     def handler(signum, frame):
-        display.proc.terminate()
-        prepare_output()
-        display.proc = None
+        if display.proc is not None:
+            prepare_output()
+            terminate_process()
 
     def main():
         signal.signal(signal.SIGHUP, handler)
@@ -198,8 +217,8 @@ try:
             if ip != new_ip:
                 ip = new_ip
                 display.first_line = "Host: " + ip
-                display.proc.terminate()
-                display.proc = None
+                terminate_process()
+
             if display.proc == None:
                 prepare_output()
                 display.proc = multiprocessing.Process(target=draw_output, args=())
@@ -213,6 +232,6 @@ except KeyboardInterrupt:
         display.proc.terminate()
 finally:
     GPIO.cleanup()
-if display.proc:
+if display.proc is not None:
         display.proc.terminate()
 GPIO.cleanup()
