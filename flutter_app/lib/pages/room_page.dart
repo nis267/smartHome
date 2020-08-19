@@ -14,7 +14,7 @@ class RoomPage extends StatefulWidget {
   final Room room;
 
   @override
-  _Page1State createState() => _Page1State();
+  _RoomPageState createState() => _RoomPageState();
 }
 
 // class _Page1State extends State<Page1> {
@@ -37,7 +37,7 @@ class RoomPage extends StatefulWidget {
 //   }
 // }
 
-class _Page1State extends State<RoomPage> {
+class _RoomPageState extends State<RoomPage> {
   final injector = Injector.getInjector();
   SocketService socketService;
   SnackbarText _snackbarText = new SnackbarText();

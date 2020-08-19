@@ -187,6 +187,25 @@ class SocketService {
     return devices;
   }
 
+  Future<List<Device>>getUnusedDevices() async {
+    final userUrl = "http://$_host:8080/devices/unused";
+
+    String token = await storage.read(key: 'token');
+    var headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token'
+    };
+    final response = await _netUtil.post(
+      userUrl,
+      headers: headers,
+      // body: body,
+    );
+    if (response.length == 0) return <Device>[];
+
+    List<Device> devices = await isolateDevices(response);
+    return devices;
+  }
+
   Future <String>getDeviceNewPassword() async {
     final userUrl = "http://$_host:8080/device/signup";
 

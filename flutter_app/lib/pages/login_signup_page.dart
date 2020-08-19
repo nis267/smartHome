@@ -60,7 +60,7 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
           );
         });
   }
-  
+
   // Perform login or signup
   void validateAndSubmit(BuildContext context) async {
     FocusScope.of(context).unfocus();
@@ -73,7 +73,13 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
       String userId = "";
       try {
         if (_primaryButton == 'Login') {
-          prefs.setStringList('login', [_hostController.text, _usernameController.text, _passwordController.text]);
+          if (rememberMe == true) {
+          prefs.setStringList('login', [
+            _hostController.text,
+            _usernameController.text,
+            _passwordController.text
+          ]);
+          }
           userId = await widget.auth.signIn(_hostController.text,
               _usernameController.text, _passwordController.text);
           print('Signed in: $userId');
@@ -83,7 +89,11 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
           print('Signed up user: $userId');
         } else if (_primaryButton == 'Connect device') {
           print('Connect device');
-          String device_message = await widget.auth.connectDevice(_hostController.text, _passwordController.text, _serverAddressController.text, _passwordServerController.text);
+          String device_message = await widget.auth.connectDevice(
+              _hostController.text,
+              _passwordController.text,
+              _serverAddressController.text,
+              _passwordServerController.text);
           createDialogGenerateNewPasswordDevice(context, device_message);
           print("userId");
           print(userId);
@@ -91,8 +101,6 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
         setState(() {
           _isLoading = false;
         });
-
-        print("hereeee");
         if (userId.length > 0 && userId != null && _primaryButton == 'Login') {
           widget.loginCallback();
         }
@@ -109,18 +117,22 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
 
   void initLoginCredentials() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    setState(() {
-      bool rememberMeTmp = prefs.getBool('rememberMe');
-      if (rememberMeTmp != null) {
-        rememberMe = rememberMeTmp;
+    bool rememberMeTmp = prefs.getBool('rememberMe');
+    if (rememberMeTmp != null) {
+      rememberMe = rememberMeTmp;
+      if (rememberMe == false) {
+        await prefs.remove('login');
       }
-      List<String> loginList = prefs.getStringList('login');
-      if (loginList != null) {
-        _hostController.text = loginList[0];
-        _usernameController.text = loginList[1];
-        _passwordController.text = loginList[2];
-      }
-    });
+    }
+    List<String> loginList = prefs.getStringList('login');
+    print("loginList: ");
+    print(loginList);
+    if (loginList != null) {
+      _hostController.text = loginList[0];
+      _usernameController.text = loginList[1];
+      _passwordController.text = loginList[2];
+    }
+    setState(() {});
   }
 
   @override
@@ -153,11 +165,13 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
         _primaryButton = 'Connect device';
         _secondaryButton = 'Have an account ? Sign in';
         _thirdButton = 'Create an account';
-      } else if ((button == 3 && _thirdButton == 'Create an account') || (button == 2 && _secondaryButton == 'Create an account')) {
+      } else if ((button == 3 && _thirdButton == 'Create an account') ||
+          (button == 2 && _secondaryButton == 'Create an account')) {
         _primaryButton = 'Create account';
         _secondaryButton = 'Have an account ? Sign in';
         _thirdButton = 'Connect to device';
-      } else if (button == 2 && _secondaryButton == 'Have an account ? Sign in') {
+      } else if (button == 2 &&
+          _secondaryButton == 'Have an account ? Sign in') {
         _primaryButton = 'Login';
         _secondaryButton = 'Create an account';
         _thirdButton = 'Connect to device';
@@ -226,11 +240,17 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
             shrinkWrap: true,
             children: <Widget>[
               showLogo(),
-              showHostInput(_primaryButton == 'Connect device' ? 'SSID' : 'Host'),
+              showHostInput(
+                  _primaryButton == 'Connect device' ? 'SSID' : 'Host'),
               if (_primaryButton != 'Connect device') showUsernameInput(),
-              if (_primaryButton != 'Create account') showPasswordInput(_primaryButton == 'Connect device' ? 'Password wifi' : 'Password'),
-              if (_primaryButton == 'Connect device') showHostInput('Server address'),
-              if (_primaryButton == 'Connect device') showPasswordInput('Password device'),
+              if (_primaryButton != 'Create account')
+                showPasswordInput(_primaryButton == 'Connect device'
+                    ? 'Password wifi'
+                    : 'Password'),
+              if (_primaryButton == 'Connect device')
+                showHostInput('Server address'),
+              if (_primaryButton == 'Connect device')
+                showPasswordInput('Password device'),
               if (_primaryButton == 'Login') showCheckBoxRememberMe(),
               // if (_primaryButton == 'Connect device') showConnectDevice(),
               showPrimaryButton(context),
@@ -244,15 +264,9 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
 
   void _onChangedCheckBoxRememberMe(bool newValue) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
+    rememberMe = newValue;
     setState(() {
-      rememberMe = newValue;
       prefs.setBool("rememberMe", rememberMe);
-      if (rememberMe == true) {
-        prefs.setStringList('login', [_hostController.text, _usernameController.text, _passwordController.text]);
-      }
-      else {
-        prefs.clear();
-      }
     });
   }
 
@@ -301,9 +315,13 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
 
   Widget showHostInput(String text) {
     return Padding(
-      padding: text == 'Server address' ? const EdgeInsets.fromLTRB(0.0, 15.0 , 0.0, 0.0) : const EdgeInsets.fromLTRB(0.0, 100.0 , 0.0, 0.0),
+      padding: text == 'Server address'
+          ? const EdgeInsets.fromLTRB(0.0, 15.0, 0.0, 0.0)
+          : const EdgeInsets.fromLTRB(0.0, 100.0, 0.0, 0.0),
       child: new TextFormField(
-        controller: text == 'Server address' ? _serverAddressController : _hostController,
+        controller: text == 'Server address'
+            ? _serverAddressController
+            : _hostController,
         maxLines: 1,
         keyboardType: TextInputType.text,
         autofocus: false,
@@ -313,7 +331,7 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
               text == 'SSID' ? Icons.wifi : Icons.dns,
               color: Colors.grey,
             )),
-        validator: (value) => value.isEmpty ?  text + ' can\'t be empty' : null,
+        validator: (value) => value.isEmpty ? text + ' can\'t be empty' : null,
       ),
     );
   }
@@ -341,7 +359,9 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(0.0, 15.0, 0.0, 0.0),
       child: new TextFormField(
-        controller: text == 'Password device' ? _passwordServerController : _passwordController,
+        controller: text == 'Password device'
+            ? _passwordServerController
+            : _passwordController,
         maxLines: 1,
         obscureText: true,
         autofocus: false,
@@ -359,21 +379,19 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
   Widget showthirdButton(BuildContext context) {
     return new FlatButton(
         child: new Text(_thirdButton,
-          // 'Connect to device',
+            // 'Connect to device',
             style: new TextStyle(fontSize: 18.0, fontWeight: FontWeight.w300)),
-        onPressed: () 
-        {
+        onPressed: () {
           toggleFormMode(context, 3);
         });
   }
-  
+
   Widget showSecondaryButton(BuildContext context) {
     return new FlatButton(
         child: new Text(_secondaryButton,
             // _isLoginForm ? 'Create an account' : 'Have an account? Sign in',
             style: new TextStyle(fontSize: 18.0, fontWeight: FontWeight.w300)),
-        onPressed: () 
-        {
+        onPressed: () {
           toggleFormMode(context, 2);
         });
   }
@@ -389,11 +407,11 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
                 borderRadius: new BorderRadius.circular(30.0)),
             color: Colors.blue,
             child: new Text(_primaryButton,
-              // _isLoginForm ? 'Login' : 'Create account',
+                // _isLoginForm ? 'Login' : 'Create account',
                 style: new TextStyle(fontSize: 20.0, color: Colors.white)),
             onPressed: () {
               validateAndSubmit(context);
-              },
+            },
           ),
         ));
   }

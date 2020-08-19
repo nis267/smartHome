@@ -197,6 +197,12 @@ app.post('/devices/free', checkToken, async (req, res) => {
   return res.json(devices);
 });
 
+app.post('/devices/unused', checkToken, async (req, res) => {
+  console.log("devices/unused");
+  const devices = await mysqlQuery('SELECT * FROM device WHERE room_id IS NULL');
+  return res.json(devices);
+});
+
 app.post('/devices/:roomId', checkToken, async (req, res) => {
   const roomId = req.params.roomId;
   const { body } = req;
