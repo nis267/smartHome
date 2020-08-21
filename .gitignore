@@ -3,3 +3,4 @@
 node_modules
 forever-script*
 package-lock.json
+*/*.log

@@ -82,11 +82,9 @@ try:
         get_users_devices_connected()
 
     def terminate_process():
-        if display.proc is not None:
+        if display.proc is not None and display.proc.is_alive() is True:
             display.proc.terminate()
             display.proc.join()
-            display.proc.close()
-            display.proc = None
 
     def draw_output_to_display(first_line, seconde_line, third_line, previous, next):
         with canvas(device) as draw:
@@ -163,6 +161,8 @@ try:
                 break
         if enter == False:
             draw_output_without_offset()
+            while True:
+                sleep(1)
 
     def get_new_user(filename):
         try:
@@ -206,25 +206,29 @@ try:
             get_default_output()
 
     def handler(signum, frame):
-        if display.proc is not None:
+        if display.proc is not None and display.proc.is_alive() is True:
             prepare_output()
             terminate_process()
 
     def main():
+        print("Starting...")
         signal.signal(signal.SIGHUP, handler)
         ip = get_ip()
         display.first_line = "Host: " + get_ip()
         while True:
             new_ip = get_ip()
-            if ip != new_ip:
+            if ip != new_ip and display.proc is not None and display.proc.is_alive() is True:
                 ip = new_ip
                 display.first_line = "Host: " + ip
                 terminate_process()
 
-            if display.proc == None:
+            if display.proc is None or display.proc.is_alive() is False:
                 prepare_output()
+                if display.proc is not None:
+                    display.proc.close()
                 display.proc = multiprocessing.Process(target=draw_output, args=())
                 display.proc.start()
+            sleep(0.1)
 
     if __name__ == "__main__":
         main()
