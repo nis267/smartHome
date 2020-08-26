@@ -226,6 +226,7 @@ try:
                 prepare_output()
                 if display.proc is not None:
                     display.proc.close()
+                    display.proc = None
                 display.proc = multiprocessing.Process(target=draw_output, args=())
                 display.proc.start()
             sleep(0.1)
