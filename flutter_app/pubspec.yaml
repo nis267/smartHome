@@ -19,6 +19,8 @@ dependencies:
   shared_preferences: ^0.5.8
   flutter_phoenix: ^0.1.0
   settings_ui: ^0.3.0
+  # flutter_form_builder: ^3.13.3
+
 
 dev_dependencies:
   flutter_test:

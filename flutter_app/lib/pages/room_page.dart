@@ -217,7 +217,7 @@ class _RoomPageState extends State<RoomPage> {
   //   Scaffold.of(context).showSnackBar(snackBar);
   // }
 
-  Future<Device> createDialogRemoveDevice(
+  Future<Device> createDialogRemoveDeviceFromRoom(
       BuildContext contextScafold, Device device) async {
     return await showDialog(
         context: contextScafold,
@@ -401,7 +401,7 @@ class _RoomPageState extends State<RoomPage> {
                             bool deviceExist =
                                 await socketService.checkDeviceExist(device.id);
                             if (deviceExist) {
-                              createDialogRemoveDevice(context, device)
+                              createDialogRemoveDeviceFromRoom(context, device)
                                   .then((onValue) {
                                 if (onValue != null) {
                                   socketService.removeDeviceFromRoom(
@@ -460,7 +460,9 @@ class _RoomPageState extends State<RoomPage> {
                               ),
                             ],
                           ),
-                        )))
+                        )
+                        )
+                        )
                     .toList(),
               )),
               Padding(

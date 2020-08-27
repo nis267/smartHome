@@ -177,9 +177,6 @@ class Auth implements BaseAuth {
     List<User> users;
     if (result != null) {
       users = await isolateUsers(result);
-      print("user authentification");
-      print(users[0].id);
-      // user = new User(result['id'], result['room_id'] == null ? 0 : result['room_id'], result['name'], result['socket_id']);
     } else {
       users = null;
     }

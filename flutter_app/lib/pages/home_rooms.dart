@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_app/models/room.dart';
-import 'package:flutter_app/models/user.dart';
 import 'package:flutter_app/pages/app_drawer.dart';
 import 'package:flutter_app/pages/room_page.dart';
 import 'package:flutter_app/services/authentication.dart';
@@ -12,14 +11,12 @@ import 'package:flutter_app/services/snackBarText.dart';
 
 class HomeRoomsPage extends StatefulWidget {
   HomeRoomsPage(
-      {Key key, this.auth, this.userId, this.userName, this.logoutCallback})
+      {Key key, this.auth, this.logoutCallback})
       : super(key: key);
 
   static const String routeName = '/homeRooms';
   final BaseAuth auth;
   final VoidCallback logoutCallback;
-  final int userId;
-  final String userName;
 
   @override
   _HomeRoomsPageState createState() => _HomeRoomsPageState();
@@ -50,7 +47,7 @@ class _HomeRoomsPageState extends State<HomeRoomsPage> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(0.0, 15.0, 0.0, 0.0),
       child: new TextFormField(
-        initialValue: currentSelectedName,
+        initialValue: this.currentSelectedName,
         maxLines: 1,
         keyboardType: TextInputType.text,
         autofocus: false,
@@ -59,22 +56,15 @@ class _HomeRoomsPageState extends State<HomeRoomsPage> {
         ),
         validator: (value) => value.isEmpty ? 'Name can\'t be empty' : null,
         onSaved: (value) => {
-          currentSelectedName = value.trim(),
+          this.currentSelectedName = value.trim(),
         },
       ),
     );
   }
 
-  // void _snackbarText.showSnackBarText(BuildContext context, String text) {
-  //   final snackBar =
-  //       SnackBar(content: Text(text), duration: Duration(milliseconds: 2000));
-  //   Scaffold.of(context).removeCurrentSnackBar();
-  //   Scaffold.of(context).showSnackBar(snackBar);
-  // }
-
   Future<Room> createDialogUpdateRoom(
       BuildContext contextScafold, Room room) async {
-    currentSelectedName = room.name;
+    this.currentSelectedName = room.name;
     return await showDialog(
         context: contextScafold,
         builder: (BuildContext context) {
@@ -311,8 +301,6 @@ class _HomeRoomsPageState extends State<HomeRoomsPage> {
       // ),
 
       drawer: AppDrawer(
-        userId: widget.userId,
-        userName: widget.userName,
         auth: widget.auth,
         logoutCallback: widget.logoutCallback,
         currentRoute: 'Home',

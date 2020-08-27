@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/pages/home_rooms.dart';
 import 'package:flutter_app/pages/login_signup_page.dart';
 import 'package:flutter_app/services/authentication.dart';
+import '../globals.dart' as globals;
 
 enum AuthStatus {
   NOT_DETERMINED,
@@ -21,7 +22,6 @@ class RootPage extends StatefulWidget {
 class _RootPageState extends State<RootPage> {
   AuthStatus authStatus = AuthStatus.NOT_DETERMINED;
   int _userId = 0;
-  String _userName = "";
 
   @override
   void initState() {
@@ -30,7 +30,8 @@ class _RootPageState extends State<RootPage> {
       setState(() {
         if (user != null) {
           _userId = user?.id;
-          _userName = user?.username;
+          globals.user = user;
+          print(globals.user);
         }
         authStatus =
             user?.id == null ? AuthStatus.NOT_LOGGED_IN : AuthStatus.LOGGED_IN;
@@ -42,9 +43,7 @@ class _RootPageState extends State<RootPage> {
     widget.auth.getCurrentUser().then((user) {
       setState(() {
         _userId = user.id;
-        _userName = user.username.toString();
-        print("username setState: ");
-        print(_userName);
+        globals.user = user;
       });
     });
     setState(() {
@@ -56,7 +55,6 @@ class _RootPageState extends State<RootPage> {
     setState(() {
       authStatus = AuthStatus.NOT_LOGGED_IN;
       _userId = 0;
-      _userName = "";
     });
   }
 
@@ -83,13 +81,7 @@ class _RootPageState extends State<RootPage> {
         break;
       case AuthStatus.LOGGED_IN:
         if (_userId != 0) {
-          print("_userId: ");
-          print(_userId);
-          print("username root page:");
-          print(_userName);
           return new HomeRoomsPage(
-            userId: _userId,
-            userName: _userName,
             auth: widget.auth,
             logoutCallback: logoutCallback,
           );

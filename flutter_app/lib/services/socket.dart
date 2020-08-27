@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_app/models/user.dart';
 import 'package:flutter_phoenix/flutter_phoenix.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
@@ -43,6 +45,7 @@ class SocketService {
   IO.Socket socket;
   String _jwt;
   String _host;
+  final int _port = 80;
   
   StreamController<List<Device>> deviceController = StreamController.broadcast();
   Stream<List<Device>> get stream => deviceController.stream;
@@ -57,7 +60,7 @@ class SocketService {
     print("socket");
     _jwt = jwt;
     _host = host;
-    socket = IO.io('http://$host:8080/users'/*config.socketUrl*/, <String, dynamic>{
+    socket = IO.io('http://$host:$_port/users'/*config.socketUrl*/, <String, dynamic>{
       'path': '/smartHome',
       'transports': ['websocket'],
     });
@@ -206,6 +209,31 @@ class SocketService {
     return devices;
   }
 
+  Future<bool>removeUnusedDevices(ids) async {
+    final userUrl = "http://$_host:8080/device/remove";
+    print("url: ");
+    print(userUrl);
+    print("ids: ");
+    print(ids);
+    String token = await storage.read(key: 'token');
+    var headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token'
+    };
+    final response = await _netUtil.post(
+      userUrl,
+      headers: headers,
+      body: json.encode(
+        {
+          "devices_ids": ids
+        }
+      ),
+    );
+    print("response: ");
+    print(response);
+    return true;
+  }
+
   Future <String>getDeviceNewPassword() async {
     final userUrl = "http://$_host:8080/device/signup";
 
@@ -323,10 +351,14 @@ class SocketService {
     return true;
   }
 
-  Future<List<User>> getUser(int userId) async {
-    final userUrl = "http://$_host:8080/device/exist/$userId";
+  Future<bool> setNewUserName(int userId, String newUsername) async {
+    final userUrl = "http://$_host:8080/user/new_user_name/$userId";
 
+    print("userUrl: ");
+    print(userUrl);
     String token = await storage.read(key: 'token');
+    print("token:");
+    print(token);
     var headers = {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer $token'
@@ -334,12 +366,63 @@ class SocketService {
     final response = await _netUtil.post(
       userUrl,
       headers: headers,
-      // body: body,
+      body: json.encode(
+        {
+          "new_username": newUsername
+        }
+      ),
     );
 
-    if (response.length == 0) return null;
+    print("response[error]: ");
+    print(response["error"]);
+    if (response["error"]) {
+      print('here error');
+      throw new Exception(response["error_msg"]);
+    }
 
-    List<User> users = await isolateUsers(response);
-    return users;
+    if (response.length == 0) return false;
+
+    // List<User> users = await isolateUsers(response);
+    // return users[0];
+    return true;
   }
+
+  Future<bool> setNewUserPassword(int userId, String password, String newPassword, String confirmPassword) async {
+    final userUrl = "http://$_host:8080/user/change_password/$userId";
+
+    print("userUrl: ");
+    print(userUrl);
+    String token = await storage.read(key: 'token');
+    print("token:");
+    print(token);
+    var headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token'
+    };
+    final response = await _netUtil.post(
+      userUrl,
+      headers: headers,
+      body: json.encode(
+        {
+          "password": password,
+          "new_password": newPassword,
+          "confirm_new_password": confirmPassword
+        }
+      ),
+    );
+
+    print("response[error]: ");
+    print(response["error"]);
+    if (response["error"]) {
+      print('here error');
+      throw new Exception(response);
+    }
+
+    if (response.length == 0) return false;
+
+    // List<User> users = await isolateUsers(response);
+    // return users[0];
+    return true;
+  }
+
 }

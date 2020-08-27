@@ -7,11 +7,12 @@ var jwt = require('jsonwebtoken');
 var bcrypt = require('bcrypt');
 var generator = require('generate-password');
 var fs = require('fs');
+var shell = require('shelljs');
 
 const secret_user = 'smarthome_user';
 const secret_device = 'smarthome_device';
 const saltRounds = 10;
-
+const port = 80;
 const python_display_script_pid_file = '/tmp/server_smarthome/server_python_display_pid';
 const status_dir = '/tmp/server_smarthome/status/';
 const new_users_dir = '/tmp/server_smarthome/new_users/';
@@ -19,7 +20,7 @@ const users_status_file = 'users';
 const devices_status_file = 'devices';
 
 let app = express();
-var server = app.listen(8080);
+var server = app.listen(port);
 
 const send_hangup_to_python_script_display = () => {
   try {
@@ -32,10 +33,13 @@ const send_hangup_to_python_script_display = () => {
   }
 }
 const write_to_file = (dir, file, data) => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir);
-  }
   try {
+    console.log("dir: ", dir);
+    if (!fs.existsSync(dir)) {
+      console.log("create dir");
+      shell.mkdir('-p', dir);
+    }
+    console.log("create dir");
     fs.writeFileSync(dir + file, data);
     console.log(`File ${file} written successfully`);
   } catch (err) {
@@ -51,6 +55,7 @@ app.use(express.urlencoded({ extended: true }))
 
 //Check to make sure header is not undefined, if so, return Forbidden (403)
 const checkToken = async (req, res, next, secret) => {
+  console.log("here checktoken");
   const header = req.headers['authorization'];
 
   if (typeof header !== 'undefined') {
@@ -171,6 +176,70 @@ app.post('/user', checkToken, async (req, res) => {
   return res.json(user);
 });
 
+app.post('/user/new_user_name/:id', checkToken, async (req, res) => {
+  console.log("new_user_name");
+  const userId = req.params.id;
+  var new_username = req.body.new_username;
+
+  const user = await mysqlQuery('SELECT * FROM user WHERE name = ?', [new_username]);
+  console.log("user here: ", new_username);
+  console.log("user: ", user);
+  if (user.length) {
+    return res.status(400).json({ error: true, error_msg: 'User already exists' });
+  }
+
+  const user_update = await mysqlQuery('UPDATE user SET name = ? WHERE id = ?', [new_username, userId]);
+  return res.json({ error: false });
+});
+
+app.post('/user/change_password/:id', checkToken, async (req, res) => {
+  console.log("change_password");
+  const userId = req.params.id;
+  var password = req.body.password;
+  var new_password = req.body.new_password;
+  var confirm_new_password = req.body.confirm_new_password;
+
+  const user = await mysqlQuery('SELECT * FROM user WHERE id = ? LIMIT 1', [userId]);
+  if (user.length) {
+    const check = await bcrypt.compareSync(password, user[0].password);
+    if (!check) {
+      return res.json({ error: true, actual_password: true, error_msg: 'Wrong password' });
+    }
+    if (password == new_password) {
+      return res.json({ error: true, actual_password: false, error_msg: 'New password same as current password' });
+    }
+    console.log("new_password: ", new_password)
+    console.log("confirm_new_password: ", confirm_new_password);
+    if (new_password != confirm_new_password) {
+      return res.json({ error: true, actual_password: false, error_msg: 'Password\'s does not match' });
+    }
+
+  }
+  else {
+    return res.json({ error: true, actual_password: true, error_msg: 'Wrong credentials' });
+  }
+  const salt = await bcrypt.genSaltSync(saltRounds);
+  const hash = await bcrypt.hashSync(new_password, salt);
+  const user_update = await mysqlQuery('UPDATE user SET password = ? WHERE id = ?', [hash, userId]);
+  return res.json({ error: false });
+});
+
+app.post('/user/change_password_first_time/:id', checkToken, async (req, res) => {
+  console.log("new_user_name");
+  const userId = req.params.id;
+  var new_username = req.body.new_username;
+
+  const user = await mysqlQuery('SELECT * FROM user WHERE name = ?', [new_username]);
+  console.log("user here: ", new_username);
+  console.log("user: ", user);
+  if (user.length) {
+    return res.status(400).json({ error: true, error_msg: 'User already exists' });
+  }
+
+  const user_update = await mysqlQuery('UPDATE user SET name = ? WHERE id = ?', [new_username, userId]);
+  return res.json({ error: false });
+});
+
 app.post('/rooms', checkToken, async (req, res) => {
   console.log("get rooms");
   const rooms = await mysqlQuery('SELECT id, name FROM room');
@@ -198,8 +267,8 @@ app.post('/devices/free', checkToken, async (req, res) => {
 });
 
 app.post('/devices/unused', checkToken, async (req, res) => {
-  console.log("devices/unused");
-  const devices = await mysqlQuery('SELECT * FROM device WHERE room_id IS NULL');
+  console.log("devices/unused here");
+  const devices = await mysqlQuery('SELECT * FROM device WHERE room_id IS NULL AND mac_address IS NOT NULL');
   return res.json(devices);
 });
 
@@ -210,6 +279,16 @@ app.post('/devices/:roomId', checkToken, async (req, res) => {
 
   const devices = await mysqlQuery('SELECT * FROM device WHERE room_id = ?', [roomId]);
   return res.json(devices);
+});
+
+app.post('/device/remove', checkToken, async (req, res) => {
+  const { body } = req;
+  const { devices_ids } = body;
+
+  console.log("devices_ids: ", devices_ids);
+  const result = await mysqlQuery('DELETE FROM device WHERE id IN(?)', [devices_ids]);
+  console.log("result", result);
+  return res.json(true);
 });
 
 app.post('/device/exist/:deviceId', checkToken, async (req, res) => {
@@ -290,6 +369,8 @@ app.post('/device/signup', checkToken, async (req, res) => {
   return res.json({ error: false, password: password });
 });
 
+
+
 connection.query('CREATE TABLE IF NOT EXISTS room(id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL)'), function (error, results, fields) {
   if (error) {
     console.log("error: ", error);
@@ -306,7 +387,7 @@ connection.query('CREATE TABLE IF NOT EXISTS device(id INT AUTO_INCREMENT PRIMAR
   }
 };
 
-connection.query('CREATE TABLE IF NOT EXISTS user(id INT AUTO_INCREMENT PRIMARY KEY, room_id INT NULL, name VARCHAR(255) NOT NULL, password VARCHAR(60) NOT NULL, socket_id VARCHAR(27), activated BOOLEAN DEFAULT FALSE, CONSTRAINT fk_room_user FOREIGN KEY(room_id) REFERENCES room (id) ON DELETE SET NULL)', function (error, results, fields) {
+connection.query('CREATE TABLE IF NOT EXISTS user(id INT AUTO_INCREMENT PRIMARY KEY, room_id INT NULL, name VARCHAR(255) NOT NULL, password VARCHAR(60) NOT NULL, socket_id VARCHAR(27), activated BOOLEAN DEFAULT FALSE, password_changed BOOLEAN DEFAULT FALSE, CONSTRAINT fk_room_user FOREIGN KEY(room_id) REFERENCES room (id) ON DELETE SET NULL)', function (error, results, fields) {
   if (error) {
     // throw error;
     console.log("error: ", error);
