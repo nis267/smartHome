@@ -59,7 +59,7 @@ Future<List<User>> isolateUsers(dynamic response) async {
 }
 
 class Auth implements BaseAuth {
-  final int _port = 443;
+  final int _port = 80;
   final injector = Injector.getInjector();
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
   NetworkUtil _netUtil = new NetworkUtil();

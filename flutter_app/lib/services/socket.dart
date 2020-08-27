@@ -45,7 +45,7 @@ class SocketService {
   IO.Socket socket;
   String _jwt;
   String _host;
-  final int _port = 443;
+  final int _port = 80;
   
   StreamController<List<Device>> deviceController = StreamController.broadcast();
   Stream<List<Device>> get stream => deviceController.stream;
