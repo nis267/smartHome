@@ -45,7 +45,7 @@ class SocketService {
   IO.Socket socket;
   String _jwt;
   String _host;
-  final int _port = 80;
+  final int _port = 443;
   
   StreamController<List<Device>> deviceController = StreamController.broadcast();
   Stream<List<Device>> get stream => deviceController.stream;
@@ -153,7 +153,7 @@ class SocketService {
   }
 
   getDeviceModelDataStream(int roomId) async {
-    final userUrl = "http://$_host:8080/devices/$roomId";
+    final userUrl = "http://$_host:$_port/devices/$roomId";
 
     String token = await storage.read(key: 'token');
     var headers = {
@@ -172,7 +172,7 @@ class SocketService {
   }
 
   Future<List<Device>>getDeviceFree() async {
-    final userUrl = "http://$_host:8080/devices/free";
+    final userUrl = "http://$_host:$_port/devices/free";
 
     String token = await storage.read(key: 'token');
     var headers = {
@@ -191,7 +191,7 @@ class SocketService {
   }
 
   Future<List<Device>>getUnusedDevices() async {
-    final userUrl = "http://$_host:8080/devices/unused";
+    final userUrl = "http://$_host:$_port/devices/unused";
 
     String token = await storage.read(key: 'token');
     var headers = {
@@ -210,7 +210,7 @@ class SocketService {
   }
 
   Future<bool>removeUnusedDevices(ids) async {
-    final userUrl = "http://$_host:8080/device/remove";
+    final userUrl = "http://$_host:$_port/device/remove";
     print("url: ");
     print(userUrl);
     print("ids: ");
@@ -235,7 +235,7 @@ class SocketService {
   }
 
   Future <String>getDeviceNewPassword() async {
-    final userUrl = "http://$_host:8080/device/signup";
+    final userUrl = "http://$_host:$_port/device/signup";
 
     String token = await storage.read(key: 'token');
     var headers = {
@@ -255,7 +255,7 @@ class SocketService {
   }
 
   Future<List<Room>> getRoomModelData() async {
-    final userUrl = "http://$_host:8080/rooms";
+    final userUrl = "http://$_host:$_port/rooms";
 
     String token = await storage.read(key: 'token');
     var headers = {
@@ -275,7 +275,7 @@ class SocketService {
   }
 
   getRoomModelDataStream() async {
-    final userUrl = "http://$_host:8080/rooms";
+    final userUrl = "http://$_host:$_port/rooms";
 
     String token = await storage.read(key: 'token');
     var headers = {
@@ -295,7 +295,7 @@ class SocketService {
   }
 
   Future<bool> checkRoomExist(int roomId) async {
-    final userUrl = "http://$_host:8080/rooms/$roomId";
+    final userUrl = "http://$_host:$_port/rooms/$roomId";
 
     String token = await storage.read(key: 'token');
     var headers = {
@@ -314,7 +314,7 @@ class SocketService {
   }
 
   Future<bool> checkRoomEmpty(int roomId) async {
-    final userUrl = "http://$_host:8080/rooms/empty/$roomId";
+    final userUrl = "http://$_host:$_port/rooms/empty/$roomId";
 
     String token = await storage.read(key: 'token');
     var headers = {
@@ -333,7 +333,7 @@ class SocketService {
   }
 
   Future<bool> checkDeviceExist(int deviceId) async {
-    final userUrl = "http://$_host:8080/device/exist/$deviceId";
+    final userUrl = "http://$_host:$_port/device/exist/$deviceId";
 
     String token = await storage.read(key: 'token');
     var headers = {
@@ -352,7 +352,7 @@ class SocketService {
   }
 
   Future<bool> setNewUserName(int userId, String newUsername) async {
-    final userUrl = "http://$_host:8080/user/new_user_name/$userId";
+    final userUrl = "http://$_host:$_port/user/new_user_name/$userId";
 
     print("userUrl: ");
     print(userUrl);
@@ -388,7 +388,7 @@ class SocketService {
   }
 
   Future<bool> setNewUserPassword(int userId, String password, String newPassword, String confirmPassword) async {
-    final userUrl = "http://$_host:8080/user/change_password/$userId";
+    final userUrl = "http://$_host:$_port/user/change_password/$userId";
 
     print("userUrl: ");
     print(userUrl);

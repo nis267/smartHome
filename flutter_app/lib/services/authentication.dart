@@ -59,6 +59,7 @@ Future<List<User>> isolateUsers(dynamic response) async {
 }
 
 class Auth implements BaseAuth {
+  final int _port = 443;
   final injector = Injector.getInjector();
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
   NetworkUtil _netUtil = new NetworkUtil();
@@ -69,7 +70,7 @@ class Auth implements BaseAuth {
   Future<String> signIn(String host, String username, String password) async {
     final SocketService socketService = injector.get<SocketService>();
     _host = host;
-    final loginUrl = "http://" + host + ":8080/login";
+    final loginUrl = "http://" + host + ":$_port/login";
 
     String basicAuth = 'Basic ' + base64Encode(utf8.encode('$username:$password'));
     Map<String, String> headers = {
@@ -98,7 +99,7 @@ class Auth implements BaseAuth {
 
   Future<String> signUp(String host, String username) async {
     _host = host;
-    final loginUrl = "http://" + host + ":8080/signup";
+    final loginUrl = "http://" + host + ":$_port/signup";
 
     var data = {
       "username": username,
@@ -158,7 +159,7 @@ class Auth implements BaseAuth {
     if (_host == null) {
       return null;
     }
-    final userUrl = "http://" + _host + ":8080/user";
+    final userUrl = "http://" + _host + ":$_port/user";
     final json = await getJsonFromJWT(await storage.read(key: 'token'));
     var data = {
       "id": json['uid'],
