@@ -298,6 +298,7 @@ app.post('/user/new_email/:id', checkToken, async (req, res) => {
   }
   if (!user[0].activated) {
     delete_file(new_users_dir + user[0].id);
+    send_hangup_to_python_script_display();
     console.log("file deleted");
     await mysqlQuery('UPDATE user SET activated = TRUE WHERE id = ?', [user[0].id]);
   }
