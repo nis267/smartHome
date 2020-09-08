@@ -45,6 +45,7 @@ class SocketService {
   IO.Socket socket;
   String _jwt;
   String _host;
+  String _url;
   final int _port = 80;
   
   StreamController<List<Device>> deviceController = StreamController.broadcast();
@@ -60,7 +61,10 @@ class SocketService {
     print("socket");
     _jwt = jwt;
     _host = host;
-    socket = IO.io('http://$host:$_port/users'/*config.socketUrl*/, <String, dynamic>{
+    _url = (host.startsWith("http") ? host : "http://$host:$_port");
+    print("url: ");
+    print(_url);
+    socket = IO.io('$_url/users'/*config.socketUrl*/, <String, dynamic>{
       'path': '/smartHome',
       'transports': ['websocket'],
     });
@@ -121,23 +125,9 @@ class SocketService {
     print(socketId);
     socket.emit('setAction', {'socket_id': socketId});
   }
-  // Future <bool>sendAction(socketId, state) async {
-  //   Completer<bool> c = new Completer();
-  //   socket.emit('setAction', {'socket_id': socketId, 'state': state});
-  //   // socket.emitWithAck('setAction', {'socket_id': socketId, 'state': state}, ack: (bool conf) => {
-  //   //   print('ack $conf'),
-  //   //   // ack = true,
-  //   //   c.complete(conf),
-  //   // });
-  //   return c.future;
-  // }
 
-  setDeviceNameRoom(int id, String roomName, int roomId, int actualRoomId) {
-    socket.emit('setDeviceNameRoom', {'id': id, 'name': roomName, 'room_id': roomId, 'actual_room_id': actualRoomId});
-  }
-
-  addDeviceToRoom(int roomId, int deviceId) {
-    socket.emit('addDeviceToRoom', {'room_id': roomId, 'device_id': deviceId});
+  addDevicesToRoom(int roomId, List<int> deviceIds) {
+    socket.emit('addDevicesToRoom', jsonDecode(jsonEncode({"room_id": roomId, "devices_ids": deviceIds})));
   }
 
   removeDeviceFromRoom(int deviceId, int roomId) {
@@ -148,12 +138,18 @@ class SocketService {
     socket.emit('setUserRoom', {'room_name': room.name, 'room_id': room.id});
   }
 
-  updateRoomName(Room room) {
-    socket.emit('updateRoomName', {'room_name': room.name, 'room_id': room.id});
+  updateDevice(Device device, int actualRoomId) {
+    socket.emit('updateDevice', jsonDecode(jsonEncode(device)));
+  }
+
+  updateRoom(Room room) {
+    print("here room");
+    print(jsonEncode(room));
+    socket.emit('updateRoom', jsonDecode(jsonEncode(room)));
   }
 
   getDeviceModelDataStream(int roomId) async {
-    final userUrl = "http://$_host:$_port/devices/$roomId";
+    final userUrl = "$_url/devices/$roomId";
 
     String token = await storage.read(key: 'token');
     var headers = {
@@ -172,7 +168,7 @@ class SocketService {
   }
 
   Future<List<Device>>getDeviceFree() async {
-    final userUrl = "http://$_host:$_port/devices/free";
+    final userUrl = "$_url/devices/free";
 
     String token = await storage.read(key: 'token');
     var headers = {
@@ -191,7 +187,7 @@ class SocketService {
   }
 
   Future<List<Device>>getUnusedDevices() async {
-    final userUrl = "http://$_host:$_port/devices/unused";
+    final userUrl = "$_url/devices/unused";
 
     String token = await storage.read(key: 'token');
     var headers = {
@@ -210,7 +206,7 @@ class SocketService {
   }
 
   Future<bool>removeUnusedDevices(ids) async {
-    final userUrl = "http://$_host:$_port/device/remove";
+    final userUrl = "$_url/device/remove";
     print("url: ");
     print(userUrl);
     print("ids: ");
@@ -235,7 +231,7 @@ class SocketService {
   }
 
   Future <String>getDeviceNewPassword() async {
-    final userUrl = "http://$_host:$_port/device/signup";
+    final userUrl = "$_url/device/signup";
 
     String token = await storage.read(key: 'token');
     var headers = {
@@ -255,7 +251,7 @@ class SocketService {
   }
 
   Future<List<Room>> getRoomModelData() async {
-    final userUrl = "http://$_host:$_port/rooms";
+    final userUrl = "$_url/rooms";
 
     String token = await storage.read(key: 'token');
     var headers = {
@@ -275,7 +271,7 @@ class SocketService {
   }
 
   getRoomModelDataStream() async {
-    final userUrl = "http://$_host:$_port/rooms";
+    final userUrl = "$_url/rooms";
 
     String token = await storage.read(key: 'token');
     var headers = {
@@ -295,7 +291,7 @@ class SocketService {
   }
 
   Future<bool> checkRoomExist(int roomId) async {
-    final userUrl = "http://$_host:$_port/rooms/$roomId";
+    final userUrl = "$_url/rooms/$roomId";
 
     String token = await storage.read(key: 'token');
     var headers = {
@@ -314,7 +310,7 @@ class SocketService {
   }
 
   Future<bool> checkRoomEmpty(int roomId) async {
-    final userUrl = "http://$_host:$_port/rooms/empty/$roomId";
+    final userUrl = "$_url/rooms/empty/$roomId";
 
     String token = await storage.read(key: 'token');
     var headers = {
@@ -333,7 +329,7 @@ class SocketService {
   }
 
   Future<bool> checkDeviceExist(int deviceId) async {
-    final userUrl = "http://$_host:$_port/device/exist/$deviceId";
+    final userUrl = "$_url/device/exist/$deviceId";
 
     String token = await storage.read(key: 'token');
     var headers = {
@@ -352,7 +348,7 @@ class SocketService {
   }
 
   Future<bool> setNewUserName(int userId, String newUsername) async {
-    final userUrl = "http://$_host:$_port/user/new_user_name/$userId";
+    final userUrl = "$_url/user/new_user_name/$userId";
 
     print("userUrl: ");
     print(userUrl);
@@ -388,13 +384,9 @@ class SocketService {
   }
 
   Future<bool> setNewUserPassword(int userId, String password, String newPassword, String confirmPassword) async {
-    final userUrl = "http://$_host:$_port/user/change_password/$userId";
+    final userUrl = "$_url/user/change_password/$userId";
 
-    print("userUrl: ");
-    print(userUrl);
     String token = await storage.read(key: 'token');
-    print("token:");
-    print(token);
     var headers = {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer $token'
@@ -411,18 +403,61 @@ class SocketService {
       ),
     );
 
-    print("response[error]: ");
-    print(response["error"]);
     if (response["error"]) {
-      print('here error');
-      throw new Exception(response);
+      throw new Exception(response["error_msg"]);
     }
-
     if (response.length == 0) return false;
-
-    // List<User> users = await isolateUsers(response);
-    // return users[0];
     return true;
   }
 
+  Future<bool> chooseNewUserPassword(int userId, String newPassword, String confirmPassword) async {
+    final userUrl = "$_url/user/choose_password/$userId";
+
+    String token = await storage.read(key: 'token');
+    var headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token'
+    };
+    final response = await _netUtil.post(
+      userUrl,
+      headers: headers,
+      body: json.encode(
+        {
+          "new_password": newPassword,
+          "confirm_new_password": confirmPassword
+        }
+      ),
+    );
+
+    if (response["error"]) {
+      throw new Exception(response["error_msg"]);
+    }
+    if (response.length == 0) return false;
+    return true;
+  }
+
+  Future<bool> chooseNewUseremail(int userId, String newEmail) async {
+    final userUrl = "$_url/user/new_email/$userId";
+
+    String token = await storage.read(key: 'token');
+    var headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token'
+    };
+    final response = await _netUtil.post(
+      userUrl,
+      headers: headers,
+      body: json.encode(
+        {
+          "new_email": newEmail,
+        }
+      ),
+    );
+
+    if (response["error"]) {
+      throw new Exception(response["error_msg"]);
+    }
+    if (response.length == 0) return false;
+    return true;
+  }
 }

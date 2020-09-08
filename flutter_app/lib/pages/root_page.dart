@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app/models/user.dart';
+import 'package:flutter_app/pages/choose_email_page.dart';
+import 'package:flutter_app/pages/choose_password_page.dart';
 import 'package:flutter_app/pages/home_rooms.dart';
 import 'package:flutter_app/pages/login_signup_page.dart';
 import 'package:flutter_app/services/authentication.dart';
+import 'package:flutter_app/services/socket.dart';
+import 'package:flutter_simple_dependency_injection/injector.dart';
 import '../globals.dart' as globals;
 
 enum AuthStatus {
@@ -20,31 +25,35 @@ class RootPage extends StatefulWidget {
 }
 
 class _RootPageState extends State<RootPage> {
+  final injector = Injector.getInjector();
+  SocketService socketService;
   AuthStatus authStatus = AuthStatus.NOT_DETERMINED;
-  int _userId = 0;
 
   @override
   void initState() {
-    super.initState();
+    socketService = injector.get<SocketService>();
     widget.auth.getCurrentUser().then((user) {
       setState(() {
         if (user != null) {
-          _userId = user?.id;
           globals.user = user;
           print(globals.user);
         }
+        print("user here:");
+          print(user);
         authStatus =
             user?.id == null ? AuthStatus.NOT_LOGGED_IN : AuthStatus.LOGGED_IN;
       });
     });
+    super.initState();
   }
 
   void loginCallback() {
     widget.auth.getCurrentUser().then((user) {
       setState(() {
-        _userId = user.id;
         globals.user = user;
       });
+      print("user here callback:");
+      print(user.passwordChanged);
     });
     setState(() {
       authStatus = AuthStatus.LOGGED_IN;
@@ -54,7 +63,7 @@ class _RootPageState extends State<RootPage> {
   void logoutCallback() {
     setState(() {
       authStatus = AuthStatus.NOT_LOGGED_IN;
-      _userId = 0;
+      globals.user = null;
     });
   }
 
@@ -80,11 +89,23 @@ class _RootPageState extends State<RootPage> {
         );
         break;
       case AuthStatus.LOGGED_IN:
-        if (_userId != 0) {
+        if (globals.user != null && globals.user.id != 0) {
+          if (globals.user.passwordChanged == 0) {
+            return ChoosePasswordPage(
+              userId: globals.user.id,
+              loginCallback: loginCallback
+              );
+          }
+          if (globals.user.emailEntered == 0) {
+            return ChooseEmailPage(
+              userId: globals.user.id,
+              loginCallback: loginCallback
+            );
+          }
           return new HomeRoomsPage(
             auth: widget.auth,
             logoutCallback: logoutCallback,
-          );
+            );
         } else
           return buildWaitingScreen();
         break;

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app/pages/forgot_password_page.dart';
 import 'package:flutter_app/services/authentication.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -16,19 +17,11 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
   final _formKey = new GlobalKey<FormState>();
   bool rememberMe = false;
   final _hostController = TextEditingController();
-  final _serverAddressController = TextEditingController();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _passwordServerController = TextEditingController();
   String _errorMessage;
-
-  // int _button = 1;
-  // bool _isLoginForm;
   bool _isLoading;
-
-  String _primaryButton = 'Login';
-  String _secondaryButton = 'Create an account';
-  String _thirdButton = 'Connect to device';
+  bool _obscureTextPassword = true;
 
   // Check if form is valid before perform login or signup
   bool validateAndSave() {
@@ -48,7 +41,6 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
           return new AlertDialog(
             title: Text('Device info'),
             content: Text(msg),
-            // Text('The password for a new device is ' + password),
             actions: <Widget>[
               FlatButton(
                 child: Text('Ok'),
@@ -62,8 +54,7 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
   }
 
   // Perform login or signup
-  void validateAndSubmit(BuildContext context) async {
-    FocusScope.of(context).unfocus();
+  void validateAndSubmit() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
       _errorMessage = "";
@@ -72,40 +63,22 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
     if (validateAndSave()) {
       String userId = "";
       try {
-        if (_primaryButton == 'Login') {
-          if (rememberMe == true) {
+        if (rememberMe == true) {
           prefs.setStringList('login', [
             _hostController.text,
             _usernameController.text,
             _passwordController.text
           ]);
-          }
-          userId = await widget.auth.signIn(_hostController.text,
-              _usernameController.text, _passwordController.text);
-          print('Signed in: $userId');
-        } else if (_primaryButton == 'Create account') {
-          userId = await widget.auth
-              .signUp(_hostController.text, _usernameController.text);
-          print('Signed up user: $userId');
-        } else if (_primaryButton == 'Connect device') {
-          print('Connect device');
-          String device_message = await widget.auth.connectDevice(
-              _hostController.text,
-              _passwordController.text,
-              _serverAddressController.text,
-              _passwordServerController.text);
-          createDialogGenerateNewPasswordDevice(context, device_message);
-          print("userId");
-          print(userId);
         }
+        userId = await widget.auth.signIn(_hostController.text,
+            _usernameController.text, _passwordController.text);
         setState(() {
           _isLoading = false;
         });
-        if (userId.length > 0 && userId != null && _primaryButton == 'Login') {
+        if (userId.length > 0 && userId != null) {
           widget.loginCallback();
         }
       } catch (e) {
-        print('Error: $e');
         setState(() {
           _isLoading = false;
           _errorMessage = e.message;
@@ -125,8 +98,6 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
       }
     }
     List<String> loginList = prefs.getStringList('login');
-    print("loginList: ");
-    print(loginList);
     if (loginList != null) {
       _hostController.text = loginList[0];
       _usernameController.text = loginList[1];
@@ -140,7 +111,6 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
     initLoginCredentials();
     _errorMessage = "";
     _isLoading = false;
-    // _isLoginForm = true;
     super.initState();
   }
 
@@ -152,36 +122,7 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
   void resetTextControllers() {
     _hostController.clear();
     _usernameController.clear();
-    _serverAddressController.clear();
     _passwordController.clear();
-    _passwordServerController.clear();
-  }
-
-  void toggleFormMode(BuildContext context, int button) {
-    FocusScope.of(context).unfocus();
-    resetForm();
-    setState(() {
-      if (button == 3 && _thirdButton == 'Connect to device') {
-        _primaryButton = 'Connect device';
-        _secondaryButton = 'Have an account ? Sign in';
-        _thirdButton = 'Create an account';
-      } else if ((button == 3 && _thirdButton == 'Create an account') ||
-          (button == 2 && _secondaryButton == 'Create an account')) {
-        _primaryButton = 'Create account';
-        _secondaryButton = 'Have an account ? Sign in';
-        _thirdButton = 'Connect to device';
-      } else if (button == 2 &&
-          _secondaryButton == 'Have an account ? Sign in') {
-        _primaryButton = 'Login';
-        _secondaryButton = 'Create an account';
-        _thirdButton = 'Connect to device';
-      }
-      // _isLoginForm = !_isLoginForm;
-      resetTextControllers();
-      if (_primaryButton == 'Login') {
-        initLoginCredentials();
-      }
-    });
   }
 
   @override
@@ -240,18 +181,11 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
             shrinkWrap: true,
             children: <Widget>[
               showLogo(),
-              showHostInput(
-                  _primaryButton == 'Connect device' ? 'SSID' : 'Host'),
-              if (_primaryButton != 'Connect device') showUsernameInput(),
-              if (_primaryButton != 'Create account')
-                showPasswordInput(_primaryButton == 'Connect device'
-                    ? 'Password wifi'
-                    : 'Password'),
-              if (_primaryButton == 'Connect device')
-                showHostInput('Server address'),
-              if (_primaryButton == 'Connect device')
-                showPasswordInput('Password device'),
-              if (_primaryButton == 'Login') showCheckBoxRememberMe(),
+              showHostInput(),
+              showUsernameInput(),
+              showPasswordInput(),
+              showForgotPassword(context),
+              showCheckBoxRememberMe(),
               // if (_primaryButton == 'Connect device') showConnectDevice(),
               showPrimaryButton(context),
               showSecondaryButton(context),
@@ -272,7 +206,7 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
 
   Widget showCheckBoxRememberMe() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(0.0, 15.0, 0.0, 0.0),
+      padding: const EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 0.0),
       child: new CheckboxListTile(
         title: Text("Remember me"),
         value: rememberMe,
@@ -303,7 +237,7 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
     return new Hero(
       tag: 'hero',
       child: Padding(
-        padding: EdgeInsets.fromLTRB(0.0, 70.0, 0.0, 0.0),
+        padding: EdgeInsets.fromLTRB(0.0, 30.0, 0.0, 0.0),
         child: CircleAvatar(
           backgroundColor: Colors.transparent,
           radius: 48.0,
@@ -313,25 +247,39 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
     );
   }
 
-  Widget showHostInput(String text) {
+  Widget showForgotPassword(BuildContext context) {
+    return FlatButton(
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ForgotPasswordPage(
+                auth: widget.auth,
+                host: _hostController.text,
+                username: _usernameController.text),
+          ),
+        );
+      },
+      textColor: Colors.blue,
+      child: Text('Forgot Password'),
+    );
+  }
+
+  Widget showHostInput() {
     return Padding(
-      padding: text == 'Server address'
-          ? const EdgeInsets.fromLTRB(0.0, 15.0, 0.0, 0.0)
-          : const EdgeInsets.fromLTRB(0.0, 100.0, 0.0, 0.0),
+      padding: const EdgeInsets.fromLTRB(0.0, 100.0, 0.0, 0.0),
       child: new TextFormField(
-        controller: text == 'Server address'
-            ? _serverAddressController
-            : _hostController,
+        controller: _hostController,
         maxLines: 1,
         keyboardType: TextInputType.text,
         autofocus: false,
         decoration: new InputDecoration(
-            hintText: text,
+            hintText: 'Host',
             icon: new Icon(
-              text == 'SSID' ? Icons.wifi : Icons.dns,
+              Icons.dns,
               color: Colors.grey,
             )),
-        validator: (value) => value.isEmpty ? text + ' can\'t be empty' : null,
+        validator: (value) => value.isEmpty ? 'Host can\'t be empty' : null,
       ),
     );
   }
@@ -355,44 +303,51 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
     );
   }
 
-  Widget showPasswordInput(String text) {
+  Widget showPasswordInput() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(0.0, 15.0, 0.0, 0.0),
       child: new TextFormField(
-        controller: text == 'Password device'
-            ? _passwordServerController
-            : _passwordController,
+        controller: _passwordController,
         maxLines: 1,
-        obscureText: true,
+        obscureText: _obscureTextPassword,
         autofocus: false,
         decoration: new InputDecoration(
-            hintText: text,
+          suffixIcon: GestureDetector(
+            onTap: () {
+              setState(() {
+                _obscureTextPassword = !_obscureTextPassword;
+              });
+            },
+            child: Icon(
+              _obscureTextPassword ? Icons.visibility : Icons.visibility_off,
+              semanticLabel: _obscureTextPassword ? 'show password' : 'hide password',
+            ),
+          ),
+            hintText: 'Password',
             icon: new Icon(
               Icons.lock,
               color: Colors.grey,
             )),
-        validator: (value) => value.isEmpty ? text + ' can\'t be empty' : null,
+        validator: (value) => value.isEmpty ? 'Password can\'t be empty' : null,
       ),
     );
   }
 
   Widget showthirdButton(BuildContext context) {
     return new FlatButton(
-        child: new Text(_thirdButton,
-            // 'Connect to device',
+        child: new Text('Connect to device',
             style: new TextStyle(fontSize: 18.0, fontWeight: FontWeight.w300)),
         onPressed: () {
-          toggleFormMode(context, 3);
+          Navigator.popAndPushNamed(context, '/connect_device');
         });
   }
 
   Widget showSecondaryButton(BuildContext context) {
     return new FlatButton(
-        child: new Text(_secondaryButton,
-            // _isLoginForm ? 'Create an account' : 'Have an account? Sign in',
+        child: new Text('Create an account',
             style: new TextStyle(fontSize: 18.0, fontWeight: FontWeight.w300)),
         onPressed: () {
-          toggleFormMode(context, 2);
+          Navigator.popAndPushNamed(context, '/create_account');
         });
   }
 
@@ -406,11 +361,10 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
             shape: new RoundedRectangleBorder(
                 borderRadius: new BorderRadius.circular(30.0)),
             color: Colors.blue,
-            child: new Text(_primaryButton,
-                // _isLoginForm ? 'Login' : 'Create account',
+            child: new Text('Login',
                 style: new TextStyle(fontSize: 20.0, color: Colors.white)),
             onPressed: () {
-              validateAndSubmit(context);
+              validateAndSubmit();
             },
           ),
         ));

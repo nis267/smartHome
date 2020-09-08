@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/models/device.dart';
 import 'package:flutter_app/models/room.dart';
+import 'package:flutter_app/pages/add_devices_page.dart';
+import 'package:flutter_app/pages/device_settings_page.dart';
 import 'package:flutter_app/services/snackBarText.dart';
 import 'package:flutter_simple_dependency_injection/injector.dart';
 import 'package:flutter_app/services/socket.dart';
@@ -17,31 +19,10 @@ class RoomPage extends StatefulWidget {
   _RoomPageState createState() => _RoomPageState();
 }
 
-// class _Page1State extends State<Page1> {
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       body: Center(
-//         child: Text(
-//           "This page is to add Item",
-//         ),
-//       ),
-
-//       floatingActionButton: FloatingActionButton(
-//         child: Icon(
-//           Icons.add,
-//         ),
-//         onPressed: (){},
-//       ),
-//     );
-//   }
-// }
-
 class _RoomPageState extends State<RoomPage> {
   final injector = Injector.getInjector();
   SocketService socketService;
   SnackbarText _snackbarText = new SnackbarText();
-  // List<Room> _roomList = [];
 
   @override
   void initState() {
@@ -67,155 +48,7 @@ class _RoomPageState extends State<RoomPage> {
     super.deactivate();
   }
 
-  String currentSelectedName;
-  List<String> settings = new List(2);
-
   final _formKey = new GlobalKey<FormState>();
-
-  Room getCurrentRoom(int roomId, roomList) {
-    int i;
-    for (i = 0; i < roomList.length; i++) {
-      if (roomList[i].id == roomId) {
-        return roomList[i];
-      }
-    }
-    return null;
-  }
-
-  Future<List<dynamic>> createDialogWindow(
-      BuildContext contextScafold, String name, int roomId) async {
-    currentSelectedName = name;
-    Room currentSelectedRoom;
-    return await showDialog(
-        context: contextScafold,
-        builder: (BuildContext context) {
-          return new FutureBuilder(
-              future: socketService.getRoomModelData(),
-              builder: (context, future) {
-                if (!future.hasData) {
-                  return new Center(child: CircularProgressIndicator());
-                } else {
-                  currentSelectedRoom = getCurrentRoom(roomId, future.data);
-                  return new AlertDialog(
-                    title: Text("Device settings"),
-                    content: Column(mainAxisSize: MainAxisSize.min, children: [
-                      new StatefulBuilder(
-                        builder: (BuildContext context, StateSetter setState) {
-                          return SingleChildScrollView(
-                              child: ListTileTheme(
-                                  child: new Container(
-                                      padding: EdgeInsets.all(16.0),
-                                      child: new Form(
-                                          key: _formKey,
-                                          child: new ListBody(
-                                            children: <Widget>[
-                                              showNameInput(),
-                                              // showDropDownRooms(context)
-                                              new Padding(
-                                                padding:
-                                                    const EdgeInsets.fromLTRB(
-                                                        0.0, 15.0, 0.0, 0.0),
-                                                child:
-                                                    new DropdownButtonFormField(
-                                                  onTap: () {
-                                                    FocusScope.of(context)
-                                                        .unfocus();
-                                                  },
-                                                  decoration:
-                                                      new InputDecoration(
-                                                    labelText: 'Select Room',
-                                                    // hintText: 'Name',
-                                                  ),
-                                                  // hint: Text('Select Room'),
-                                                  value: currentSelectedRoom,
-                                                  onChanged: (Room newValue) {
-                                                    setState(() {
-                                                      currentSelectedRoom =
-                                                          newValue;
-                                                    });
-                                                  },
-                                                  isExpanded: true,
-                                                  items: future.data
-                                                      .map<
-                                                          DropdownMenuItem<
-                                                              Room>>((value) =>
-                                                          DropdownMenuItem<
-                                                              Room>(
-                                                            child: Text(
-                                                                value.name),
-                                                            value: value,
-                                                          ))
-                                                      .toList(),
-                                                  // validator: (value) => value == null ? 'Room can\'t be empty' : null,
-                                                ),
-                                                // }
-                                                // return Center(child: CircularProgressIndicator());
-                                                // }
-                                                // )
-                                              ),
-                                            ],
-                                          )))));
-                        },
-                      ),
-                    ]),
-                    actions: <Widget>[
-                      FlatButton(
-                        // elevation: 5.0,
-                        child: Text('Cancel'),
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                        },
-                      ),
-                      FlatButton(
-                        // elevation: 5.0,
-                        child: Text('Submit'),
-                        onPressed: () {
-                          final form = _formKey.currentState;
-                          if (form.validate()) {
-                            form.save();
-                            // List<String>['ergerg', 'eghergerg'];
-                            Navigator.of(context).pop([
-                              currentSelectedName.toString(),
-                              currentSelectedRoom.id.toInt()
-                            ]);
-                            _snackbarText.showSnackBarText(
-                                contextScafold, name + ' is modified');
-                          }
-                        },
-                      )
-                    ],
-                  );
-                }
-              });
-        });
-  }
-
-  Widget showNameInput() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(0.0, 15.0, 0.0, 0.0),
-      child: new TextFormField(
-        initialValue: currentSelectedName,
-        maxLines: 1,
-        keyboardType: TextInputType.text,
-        autofocus: false,
-        decoration: new InputDecoration(
-          labelText: 'Name',
-          // hintText: 'Name',
-        ),
-        validator: (value) => value.isEmpty ? 'Name can\'t be empty' : null,
-        onSaved: (value) => {
-          currentSelectedName = value.trim(),
-        },
-      ),
-    );
-  }
-
-  // void _snackbarText.showSnackBarText(BuildContext context, String text) {
-  //   final snackBar =
-  //       SnackBar(content: Text(text), duration: Duration(milliseconds: 2000));
-  //   Scaffold.of(context).removeCurrentSnackBar();
-  //   Scaffold.of(context).showSnackBar(snackBar);
-  // }
 
   Future<Device> createDialogRemoveDeviceFromRoom(
       BuildContext contextScafold, Device device) async {
@@ -429,12 +262,10 @@ class _RoomPageState extends State<RoomPage> {
                             bool deviceExist =
                                 await socketService.checkDeviceExist(device.id);
                             if (deviceExist) {
-                              createDialogWindow(
-                                      context, device.name, device.roomId)
-                                  .then((onValue) {
-                                if (onValue != null)
-                                  socketService.setDeviceNameRoom(device.id,
-                                      onValue[0], onValue[1], widget.room.id);
+                              Navigator.push(context, MaterialPageRoute(builder: (context) => DeviceSettingsPage(device: device, room: widget.room))).then((value) async => {
+                                if (value != null && value == true) {
+                                  _snackbarText.showSnackBarText(context, 'Device updated')
+                                },
                               });
                             } else {
                               _snackbarText.showSnackBarText(
@@ -447,7 +278,7 @@ class _RoomPageState extends State<RoomPage> {
                             }
                           },
                           title: Text(
-                              device.name == null ? "No name" : device.name),
+                              device.name == null ? "" : device.name),
                           subtitle: Text(device.macAddress),
                           leading: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -476,15 +307,14 @@ class _RoomPageState extends State<RoomPage> {
                           color: Colors.white,
                         ),
                         onPressed: () {
-                          createDialogAddDevice(context).then((device) => {
-                                if (device != null)
-                                  {
-                                    socketService.addDeviceToRoom(
-                                        widget.room.id, device.id),
-                                  }
-                              });
+                          Navigator.push(context,
+                          MaterialPageRoute(builder: (context) => AddDevicesPage(room: widget.room,))).then((value) => {
+                            if (value != null && value == true) {
+                              _snackbarText.showSnackBarText(context, 'Room updated'),
+                            }
+                          });
                         },
-                        label: Text('Add a device',
+                        label: Text('Add devices',
                             style: new TextStyle(
                                 fontSize: 20.0, color: Colors.white)),
                         color: Colors.blue,

@@ -6,10 +6,16 @@ class Device {
   final String macAddress;
   int state;
   bool isChecked;
-  Device({this.id, this.roomId, this.name, this.socketId, this.macAddress, this.state, this.isChecked = false});
+  Device(
+      {this.id,
+      this.roomId,
+      this.name,
+      this.socketId,
+      this.macAddress,
+      this.state,
+      this.isChecked = false});
 
   factory Device.fromJson(Map<String, dynamic> json) {
-
     return Device(
       id: json['id'] as int,
       roomId: json['room_id'] as int,
@@ -20,4 +26,14 @@ class Device {
       isChecked: false,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'roomId': roomId,
+        'name': name,
+        'socketId': socketId,
+        'macAddress': macAddress,
+        'state': state,
+        'isChecked': isChecked,
+      };
 }

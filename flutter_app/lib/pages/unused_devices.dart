@@ -103,7 +103,7 @@ class _UnusedDevicesPageState extends State<UnusedDevicesPage> {
                       return Card(
                           child: ListTile(
                         title:
-                            Text(device.name == null ? "No name" : device.name),
+                            Text(device.name == null ? "" : device.name),
                         subtitle: Text(device.macAddress),
                         onTap: () {
                           setState(() {
@@ -147,8 +147,8 @@ class _UnusedDevicesPageState extends State<UnusedDevicesPage> {
                                                   .removeUnusedDevices(
                                                       devicesToRemove)
                                                   .then((value) => {
-                                                        _snackbarText.showSnackBarText(context, devicesToRemove.length.toString() + (devicesToRemove.length > 1 ? " devices" : " device") + " deleted"),
-                                                        
+                                                        _snackbarText.showSnackBarText(context, devicesToRemove.length.toString() + 
+                                                        (devicesToRemove.length > 1 ? " devices" : " device") + " deleted"),
                                                         devicesCheckboxStatus
                                                             .removeWhere((element) =>
                                                                 devicesToRemove

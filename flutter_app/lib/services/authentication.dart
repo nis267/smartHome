@@ -27,6 +27,8 @@ abstract class BaseAuth {
 
   Future<bool> isEmailVerified();
 
+  Future<void> forgotPassword(String host, String username);
+
   // Future<List<Device>> getDeviceModelData();
 
   Future<void> sendAction(String socketId);
@@ -65,13 +67,19 @@ class Auth implements BaseAuth {
   NetworkUtil _netUtil = new NetworkUtil();
   final storage = new FlutterSecureStorage();
   String _host;
+  String _url;
   // Injector injector
   // injector = Injector.getInjector();
   Future<String> signIn(String host, String username, String password) async {
     final SocketService socketService = injector.get<SocketService>();
     _host = host;
-    final loginUrl = "http://" + host + ":$_port/login";
+    _url = (host.startsWith("http") ? host : "http://$host:$_port");
+    final loginUrl = "$_url/login";
 
+    print("host: ");
+    print(host);
+    print("loginUrl: ");
+    print(loginUrl);
     String basicAuth = 'Basic ' + base64Encode(utf8.encode('$username:$password'));
     Map<String, String> headers = {
       'content-type': 'application/json',
@@ -99,7 +107,8 @@ class Auth implements BaseAuth {
 
   Future<String> signUp(String host, String username) async {
     _host = host;
-    final loginUrl = "http://" + host + ":$_port/signup";
+    _url = (host.startsWith("http") ? host : "http://$host:$_port");
+    final loginUrl = "$_url/signup";
 
     var data = {
       "username": username,
@@ -159,7 +168,7 @@ class Auth implements BaseAuth {
     if (_host == null) {
       return null;
     }
-    final userUrl = "http://" + _host + ":$_port/user";
+    final userUrl = "$_url/user";
     final json = await getJsonFromJWT(await storage.read(key: 'token'));
     var data = {
       "id": json['uid'],
@@ -184,6 +193,15 @@ class Auth implements BaseAuth {
     return users[0];
   }
 
+  Future<bool> isLogged() async {
+    try {
+      final User user = await getCurrentUser();
+      return user != null;
+    } catch (e) {
+      return false;
+    }
+  }
+
   Future<void> sendAction(String socketId) async {
     final SocketService socketService = injector.get<SocketService>();
 
@@ -205,5 +223,28 @@ class Auth implements BaseAuth {
   Future<bool> isEmailVerified() async {
     FirebaseUser user = await _firebaseAuth.currentUser();
     return user.isEmailVerified;
+  }
+
+  Future<void> forgotPassword(String host, String username) async {
+    _url = (host.startsWith("http") ? host : "http://$host:$_port");
+    final loginUrl = "$_url/user/forgot_password";
+
+    var data = {
+      "username": username,
+    };
+
+    String body = jsonEncode(data);
+
+    var headers = {
+      'Content-Type': 'application/json',
+    };
+    final result = await _netUtil.post(
+      loginUrl,
+      headers: headers,
+      body: body,
+    );
+    if (result["error"]) {
+      throw new Exception(result["error_msg"]);
+    }
   }
 }

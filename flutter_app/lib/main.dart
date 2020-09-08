@@ -1,9 +1,6 @@
-import 'dart:async';
-import 'dart:developer';
 import 'package:flutter/material.dart';
-import 'package:flutter_app/Routes/routes.dart';
-import 'package:flutter_app/pages/home_rooms.dart';
-import 'package:flutter_app/pages/settingsPage.dart';
+import 'package:flutter_app/pages/connect_device_page.dart';
+import 'package:flutter_app/pages/create_account_page.dart';
 import 'package:flutter_app/services/authentication.dart';
 import 'package:flutter_app/pages/root_page.dart';
 import 'package:flutter_phoenix/flutter_phoenix.dart';
@@ -33,7 +30,12 @@ class MyApp extends StatelessWidget {
         theme: new ThemeData(
           primarySwatch: Colors.blue,
         ),
-        home: new RootPage(auth: new Auth()),
+        initialRoute: '/',
+        routes: {
+          '/': (context) => new RootPage(auth: new Auth()),
+          '/connect_device': (context) => ConnectDevicePage(auth: new Auth()),
+          '/create_account' : (context) => CreateAccountPage(auth: new Auth())
+        },
         );
   }
 }

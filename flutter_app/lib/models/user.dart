@@ -3,7 +3,10 @@ class User {
   int roomId;
   String socketId;
   String username;
-  User({this.id, this.roomId, this.username, this.socketId});
+  int passwordChanged;
+  int emailEntered;
+  String email;
+  User({this.id, this.roomId, this.username, this.socketId, this.passwordChanged, this.emailEntered, this.email});
 
   // User.map(dynamic obj) {
   //   this._id = obj["id"];
@@ -24,6 +27,9 @@ class User {
       roomId: json['room_id'] as int,
       username: json['name'] as String,
       socketId: json['socket_id'] as String,
+      passwordChanged: json['password_changed'] as int,
+      emailEntered: json['email_entered'] as int,
+      email: json['email'] as String
     );
   }
 

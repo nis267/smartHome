@@ -8,6 +8,8 @@ var bcrypt = require('bcrypt');
 var generator = require('generate-password');
 var fs = require('fs');
 var shell = require('shelljs');
+var validator = require("email-validator");
+var nodemailer = require('nodemailer'); 
 
 const secret_user = 'smarthome_user';
 const secret_device = 'smarthome_device';
@@ -18,6 +20,7 @@ const status_dir = '/tmp/server_smarthome/status/';
 const new_users_dir = '/tmp/server_smarthome/new_users/';
 const users_status_file = 'users';
 const devices_status_file = 'devices';
+const account_active_timeout = 600000;
 
 let app = express();
 var server = app.listen(port);
@@ -118,18 +121,31 @@ app.post('/login', async (req, res) => {
   if (user.length) {
     const check = await bcrypt.compareSync(password, user[0].password);
     if (!check) {
-      return res.json({ error: true, error_msg: 'Wrong credentials' });
+      if (user[0].forgot_password) {
+        const check_forgot_password = await bcrypt.compareSync(password, user[0].forgot_password);
+        if (check_forgot_password) {
+          await mysqlQuery('UPDATE user SET password_changed = FALSE WHERE name = ?', [username]);
+        } else {
+          return res.json({ error: true, error_msg: 'Wrong credentials' });
+        }
+      }
+      else {
+        return res.json({ error: true, error_msg: 'Wrong credentials' });
+      }
+    } else if (user[0].forgot_password){
+      await mysqlQuery('UPDATE user SET forgot_password = NULL WHERE name = ?', [username]);
     }
   } else {
     return res.json({ error: true, error_msg: 'Wrong credentials' });
   }
-  if (!user[0].activated) {
-    delete_file(new_users_dir + user[0].id);
-    console.log("file deleted");
-    await mysqlQuery('UPDATE user SET activated = TRUE WHERE id = ?', [user[0].id]);
-  }
+  
   var token = jwt.sign({ uid: user[0].id }, secret_user, { expiresIn: 86440 });
   return res.json({ error: false, token: token });
+});
+
+app.get('/apk', async (req, res) => {
+  const file = `${__dirname}/app.apk`;
+  res.download(file);
 });
 
 app.post('/login_device', async (req, res) => {
@@ -192,6 +208,103 @@ app.post('/user/new_user_name/:id', checkToken, async (req, res) => {
   return res.json({ error: false });
 });
 
+app.post('/user/forgot_password/', async (req, res) => {
+  console.log("forgot_password");
+  // Your username has not been recognized
+  var username = req.body.username;
+  
+  try {
+    const user = await mysqlQuery('SELECT * FROM user WHERE name = ?', [username]);
+    if (!user.length) {
+      return res.status(400).json({ error: true, error_msg: 'Your username has not been recognized' });
+    }
+    if (!user[0].activated) {
+      return res.status(400).json({ error: true, error_msg: 'Account not activated' });
+    }
+
+    const password = generator.generate({
+      length: 10,
+      numbers: true,
+    });
+    var transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: 'smarthome42101@gmail.com',
+        pass: '15360570smarthome42101'
+      }
+    });
+    
+    var mailOptions = {
+      from: 'smarthome42101@gmail.com',
+      to: user[0].email,
+      subject: 'New password smarthome account',
+      text: `Username: ${username}\nPassword: ${password}`
+    };
+    
+    transporter.sendMail(mailOptions, function(error, info) {
+      if (error) {
+        console.log(error);
+      } else {
+        console.log('Email sent: ' + info.response);
+      }
+    });
+    const salt = await bcrypt.genSaltSync(saltRounds);
+    const hash = await bcrypt.hashSync(password, salt);
+    const user_update = await mysqlQuery('UPDATE user SET forgot_password = ? WHERE id = ?', [hash, user[0].id]);
+
+  } catch (err) {
+    return res.json({ error: true });
+  }
+  return res.json({ error: false });
+});
+
+app.post('/user/choose_password/:id', checkToken, async (req, res) => {
+  console.log("choose_password");
+  const userId = req.params.id;
+  var new_password = req.body.new_password;
+  var confirm_new_password = req.body.confirm_new_password;
+
+  const user = await mysqlQuery('SELECT * FROM user WHERE id = ? LIMIT 1', [userId]);
+  if (user.length) {
+    if (new_password != confirm_new_password) {
+      return res.json({ error: true, error_msg: 'Password\'s does not match' });
+    }
+    if (new_password.length < 6) {
+      return res.json({ error: true, error_msg: 'Password must be at least 6 characters' });
+    }
+  }
+  else {
+    return res.json({ error: true, error_msg: 'Wrong credentials' });
+  }
+  const salt = await bcrypt.genSaltSync(saltRounds);
+  const hash = await bcrypt.hashSync(new_password, salt);
+  const user_update = await mysqlQuery('UPDATE user SET password = ?, password_changed = TRUE, forgot_password = NULL WHERE id = ?', [hash, userId]);
+  return res.json({ error: false });
+});
+
+app.post('/user/new_email/:id', checkToken, async (req, res) => {
+  console.log("new_email");
+  const userId = req.params.id;
+  var new_email = req.body.new_email;
+
+  const user = await mysqlQuery('SELECT * FROM user WHERE id = ? LIMIT 1', [userId]);
+  if (user.length) {
+    if (!validator.validate(new_email)) {
+      return res.json({ error: true, error_msg: 'Invalid email address' });
+    }
+  }
+  else {
+    return res.json({ error: true, error_msg: 'Wrong credentials' });
+  }
+  if (!user[0].activated) {
+    delete_file(new_users_dir + user[0].id);
+    console.log("file deleted");
+    await mysqlQuery('UPDATE user SET activated = TRUE WHERE id = ?', [user[0].id]);
+  }
+  const user_update = await mysqlQuery('UPDATE user SET email = ?, email_entered = TRUE WHERE id = ?', [new_email, userId]);
+  return res.json({ error: false });
+});
+
 app.post('/user/change_password/:id', checkToken, async (req, res) => {
   console.log("change_password");
   const userId = req.params.id;
@@ -203,15 +316,16 @@ app.post('/user/change_password/:id', checkToken, async (req, res) => {
   if (user.length) {
     const check = await bcrypt.compareSync(password, user[0].password);
     if (!check) {
-      return res.json({ error: true, actual_password: true, error_msg: 'Wrong password' });
+      return res.json({ error: true, actual_password: true, error_msg: 'Actual password wrong' });
     }
     if (password == new_password) {
       return res.json({ error: true, actual_password: false, error_msg: 'New password same as current password' });
     }
-    console.log("new_password: ", new_password)
-    console.log("confirm_new_password: ", confirm_new_password);
     if (new_password != confirm_new_password) {
-      return res.json({ error: true, actual_password: false, error_msg: 'Password\'s does not match' });
+      return res.json({ error: true, actual_password: false, error_msg: 'New password and confirm password does not match' });
+    }
+    if (new_password.length < 6) {
+      return res.json({ error: true, actual_password: false, error_msg: 'Password must be at least 6 characters' });
     }
 
   }
@@ -221,22 +335,6 @@ app.post('/user/change_password/:id', checkToken, async (req, res) => {
   const salt = await bcrypt.genSaltSync(saltRounds);
   const hash = await bcrypt.hashSync(new_password, salt);
   const user_update = await mysqlQuery('UPDATE user SET password = ? WHERE id = ?', [hash, userId]);
-  return res.json({ error: false });
-});
-
-app.post('/user/change_password_first_time/:id', checkToken, async (req, res) => {
-  console.log("new_user_name");
-  const userId = req.params.id;
-  var new_username = req.body.new_username;
-
-  const user = await mysqlQuery('SELECT * FROM user WHERE name = ?', [new_username]);
-  console.log("user here: ", new_username);
-  console.log("user: ", user);
-  if (user.length) {
-    return res.status(400).json({ error: true, error_msg: 'User already exists' });
-  }
-
-  const user_update = await mysqlQuery('UPDATE user SET name = ? WHERE id = ?', [new_username, userId]);
   return res.json({ error: false });
 });
 
@@ -333,14 +431,12 @@ app.post('/signup', async (req, res) => {
       length: 10,
       numbers: true,
     });
-    console.log("password: " + password);
     const salt = await bcrypt.genSaltSync(saltRounds);
     const hash = await bcrypt.hashSync(password, salt);
     await mysqlQuery('INSERT INTO user (name, password) VALUES (?, ?)', [username, hash]);
     const new_user = await mysqlQuery('SELECT * FROM user WHERE name = ?', [username]);
-    console.log("result new user: ", new_user);
     write_to_file(new_users_dir, String(new_user[0].id), new_user[0].name + "\n" + password);
-    setTimeout(delete_non_activated_user_timeout, 600000, new_user[0].id);
+    setTimeout(delete_non_activated_user_timeout, account_active_timeout, new_user[0].id);
   } catch (err) {
     console.log("Error: " + err);
     return res.json({ error: true });
@@ -387,7 +483,7 @@ connection.query('CREATE TABLE IF NOT EXISTS device(id INT AUTO_INCREMENT PRIMAR
   }
 };
 
-connection.query('CREATE TABLE IF NOT EXISTS user(id INT AUTO_INCREMENT PRIMARY KEY, room_id INT NULL, name VARCHAR(255) NOT NULL, password VARCHAR(60) NOT NULL, socket_id VARCHAR(27), activated BOOLEAN DEFAULT FALSE, password_changed BOOLEAN DEFAULT FALSE, CONSTRAINT fk_room_user FOREIGN KEY(room_id) REFERENCES room (id) ON DELETE SET NULL)', function (error, results, fields) {
+connection.query('CREATE TABLE IF NOT EXISTS user(id INT AUTO_INCREMENT PRIMARY KEY, room_id INT NULL, name VARCHAR(255) NOT NULL, password VARCHAR(60) NOT NULL, forgot_password VARCHAR(60), email VARCHAR(320), socket_id VARCHAR(27), activated BOOLEAN DEFAULT FALSE, password_changed BOOLEAN DEFAULT FALSE, email_entered BOOLEAN DEFAULT FALSE, CONSTRAINT fk_room_user FOREIGN KEY(room_id) REFERENCES room (id) ON DELETE SET NULL)', function (error, results, fields) {
   if (error) {
     // throw error;
     console.log("error: ", error);
@@ -476,16 +572,20 @@ const initEngine = (io) => {
       const result = await mysqlQuery('UPDATE user SET room_id = NULL WHERE socket_id = ?', [socket.id]);
     });
 
-    socket.on('setDeviceNameRoom', async (object) => {
-      const result = await mysqlQuery('UPDATE device SET room_id = ?, name = ? WHERE id = ?', [object.room_id, object.name, object.id]);
-      users_nsp.to(object.actual_room_id).emit('stateChanged', object.actual_room_id);
-      if (object.room_id != object.actual_room_id) {
-        users_nsp.to(object.room_id).emit('stateChanged', object.room_id);
+    socket.on('updateDevice', async (device_object) => {
+      const device = await mysqlQuery('SELECT * FROM device WHERE id = ?', [device_object.id]);
+      if (device.length) {
+        const result = await mysqlQuery('UPDATE device SET room_id = ?, name = ? WHERE id = ?', [device_object.roomId, device_object.name, device_object.id]);
+        users_nsp.to(device[0].room_id).emit('stateChanged', device[0].room_id);
+        if (device[0].room_id != device_object.roomId) {
+          users_nsp.to(device_object.roomId).emit('stateChanged', device_object.roomId);
+        }
       }
     });
 
-    socket.on('addDeviceToRoom', async (object) => {
-      const result = await mysqlQuery('UPDATE device SET room_id = ? WHERE id = ?', [object.room_id, object.device_id]);
+    socket.on('addDevicesToRoom', async (object) => {
+      console.log("addDevicesToRoom: ", object);
+      const result = await mysqlQuery('UPDATE device SET room_id = ? WHERE id IN(?)', [object.room_id, object.devices_ids]);
       users_nsp.to(object.room_id).emit('stateChanged', object.room_id);
     });
 
@@ -513,11 +613,10 @@ const initEngine = (io) => {
       io.to(socket_id_split).emit('action');
     });
 
-    socket.on('updateRoomName', async (object) => {
-      console.log("updateRoomName: ", object);
-      const results = await mysqlQuery(`UPDATE room SET name = ? WHERE id = ?`, [object.room_name, object.room_id]);
-      console.log("updateRoomName");
-      // socket.emit('stateChangedRoom');
+    socket.on('updateRoom', async (object) => {
+      console.log("updateRoom id: ", object.id);
+      console.log("updateRoom name: ", object.name);
+      const results = await mysqlQuery(`UPDATE room SET name = ? WHERE id = ?`, [object.name, object.id]);
       users_nsp.emit('stateChangedRoom');
     });
 

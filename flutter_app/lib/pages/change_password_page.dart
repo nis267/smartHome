@@ -1,0 +1,258 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_app/services/snackBarText.dart';
+import 'package:flutter_app/services/socket.dart';
+import 'package:flutter_simple_dependency_injection/injector.dart';
+
+class ChangePasswordPage extends StatefulWidget {
+  ChangePasswordPage({Key key, this.userId}) : super(key: key);
+
+  final int userId;
+  @override
+  _ChangePasswordPageState createState() => _ChangePasswordPageState();
+}
+
+class _ChangePasswordPageState extends State<ChangePasswordPage> {
+  final _formKey = new GlobalKey<FormState>();
+  SnackbarText _snackbarText = new SnackbarText();
+  bool _isLoading;
+  String _actualPassword;
+  String _newPassword;
+  String _confirmPassword;
+  String _errorMessageNewPassword;
+  final injector = Injector.getInjector();
+  SocketService socketService;
+  bool _obscureTextPasswordActual = true;
+  bool _obscureTextPassword = true;
+  bool _obscureTextPasswordConfirm = true;
+
+  @override
+  void initState() {
+    _isLoading = false;
+    _actualPassword = "";
+    _newPassword = "";
+    _confirmPassword = "";
+    _errorMessageNewPassword = "";
+    socketService = injector.get<SocketService>();
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Update password"),
+      ),
+      body: Builder(builder: (context) =>
+      Stack(
+          children: <Widget>[
+            _showForm(context),
+            _showCircularProgress(),
+          ],
+      )
+    ));
+  }
+
+  Widget _showForm(BuildContext context) {
+    return new Container(
+        padding: EdgeInsets.all(16.0),
+        child: new Form(
+          key: _formKey,
+          child: new Column(
+            // shrinkWrap: true,
+            children: <Widget>[
+              showPasswordActualInput(),
+              showPasswordInput(),
+              showPasswordConfirmInput(),
+              showErrorMessage(),
+              Spacer(),
+              showPrimaryButton(context),
+            ],
+          )
+        )
+    );
+  }
+
+  Widget _showCircularProgress() {
+    if (_isLoading) {
+      return Center(child: CircularProgressIndicator());
+    }
+    return Container(
+      height: 0.0,
+      width: 0.0,
+    );
+  }
+
+  Widget showErrorMessage() {
+    if (_errorMessageNewPassword != null && _errorMessageNewPassword.length > 0) {
+      return Padding(
+      padding: const EdgeInsets.fromLTRB(0.0, 15.0, 0.0, 0.0),
+      child: new Text(
+        _errorMessageNewPassword,
+        style: TextStyle(
+            fontSize: 13.0,
+            color: Colors.red,
+            height: 1.0,
+            fontWeight: FontWeight.w300),
+      )
+      );
+    } else {
+      return new Container(
+        height: 0.0,
+      );
+    }
+  }
+
+   Widget showPasswordActualInput() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0.0, 15.0, 0.0, 0.0),
+      child: new TextFormField(
+        maxLines: 1,
+        obscureText: _obscureTextPasswordActual,
+        keyboardType: TextInputType.text,
+        autofocus: false,
+        decoration: new InputDecoration(
+          labelText: 'Actual password',
+          suffixIcon:  GestureDetector(
+            onTap: () {
+              setState(() {
+                _obscureTextPasswordActual = !_obscureTextPasswordActual;
+              });
+            },
+            child: Icon(
+              _obscureTextPasswordActual ? Icons.visibility : Icons.visibility_off,
+              semanticLabel: _obscureTextPasswordActual ? 'show password' : 'hide password',
+            ),
+          )
+        ),
+        validator: (value) =>
+          value.isEmpty ? 'Actual password can\'t be empty' : null,
+        onChanged: (value) => {
+          _actualPassword = value.trim()
+        },
+      ),
+    );
+  }
+
+  Widget showPasswordInput() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0.0, 15.0, 0.0, 0.0),
+      child: new TextFormField(
+        maxLines: 1,
+        obscureText: _obscureTextPassword,
+        keyboardType: TextInputType.text,
+        autofocus: false,
+        decoration: new InputDecoration(
+          labelText: 'New password',
+          suffixIcon:  GestureDetector(
+            onTap: () {
+              setState(() {
+                _obscureTextPassword = !_obscureTextPassword;
+              });
+            },
+            child: Icon(
+              _obscureTextPassword ? Icons.visibility : Icons.visibility_off,
+              semanticLabel: _obscureTextPassword ? 'show password' : 'hide password',
+            ),
+          )
+        ),
+        validator: (value) =>
+          value.isEmpty ? 'New password can\'t be empty' : null,
+        onChanged: (value) => {
+          _newPassword = value.trim()
+        },
+      ),
+    );
+  }
+
+  Widget showPasswordConfirmInput() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0.0, 15.0, 0.0, 0.0),
+      child: new TextFormField(
+        maxLines: 1,
+        keyboardType: TextInputType.text,
+        autofocus: false,
+        decoration: new InputDecoration(
+          labelText: 'Confirm password',
+          suffixIcon: GestureDetector(
+            onTap: () {
+              setState(() {
+                _obscureTextPasswordConfirm = !_obscureTextPasswordConfirm;
+              });
+            },
+            child: Icon(
+              _obscureTextPasswordConfirm ? Icons.visibility : Icons.visibility_off,
+              semanticLabel: _obscureTextPasswordConfirm ? 'show password' : 'hide password',
+            )
+          )
+        ),
+        obscureText: _obscureTextPasswordConfirm,
+        validator: (value) => 
+          value.isEmpty ? 'Confirm password can\'t be empty' : null,
+        onChanged: (value) => {
+          _confirmPassword = value.trim()
+        },
+      ),
+    );
+  }
+
+  bool validateAndSave() {
+    final form = _formKey.currentState;
+    if (form.validate()) {
+      form.save();
+      return true;
+    }
+    return false;
+  }
+
+  void resetForm() {
+    _formKey.currentState.reset();
+    _actualPassword = "";
+    _newPassword = "";
+    _confirmPassword = "";
+  }
+
+  void validateAndSubmit(BuildContext context) async {
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _errorMessageNewPassword = "";
+      _isLoading = true;
+    });
+    if (validateAndSave()) {
+      try {
+        await socketService.setNewUserPassword(widget.userId, _actualPassword,_newPassword, _confirmPassword);
+        setState(() {
+          _isLoading = false;
+        });
+      } catch (e) {
+        setState(() {
+          _isLoading = false;
+          _errorMessageNewPassword = e.message;
+        });
+      }
+      final form = _formKey.currentState;
+      if (_errorMessageNewPassword.isEmpty && form.validate()) {
+        resetForm();
+        Navigator.pop(context, true);
+      }
+    }
+  }
+
+  Widget showPrimaryButton(BuildContext context) {
+        return new SizedBox(
+          width: double.infinity,
+          height: 40.0,
+          child: new RaisedButton(
+            elevation: 5.0,
+            shape: new RoundedRectangleBorder(
+                borderRadius: new BorderRadius.circular(30.0)),
+            color: Colors.blue,
+            child: new Text("Submit",
+                style: new TextStyle(fontSize: 20.0, color: Colors.white)),
+            onPressed: () {
+              validateAndSubmit(context);
+            },
+          ),
+        );
+  }
+
+}
