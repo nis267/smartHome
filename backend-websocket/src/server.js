@@ -258,6 +258,47 @@ app.post('/user/forgot_password/', async (req, res) => {
   return res.json({ error: false });
 });
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+app.post('/user/remove/:id', checkToken, async (req, res) => {
+  const userId = req.params.id;
+  const password = req.body.password;
+  console.log("remove account");
+  console.log("userId: ", userId);
+  console.log("password: ", password);
+  const user = await mysqlQuery('SELECT * FROM user WHERE id = ?', [userId]);
+  if (user.length) {
+    const check = await bcrypt.compareSync(password, user[0].password);
+    if (!check) {
+      return res.json({ error: true, error_msg: 'Wrong password' });
+    }
+  } else {
+    return res.json({ error: true, error_msg: 'Wrong credentials' });
+  }
+  const result = await mysqlQuery('DELETE FROM user WHERE id = ?', [userId]);
+  console.log("deleted: ", result);
+  return res.json({ error: false});
+});
+
 app.post('/user/choose_password/:id', checkToken, async (req, res) => {
   console.log("choose_password");
   const userId = req.params.id;

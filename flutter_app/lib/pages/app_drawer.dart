@@ -37,12 +37,7 @@ class _AppDrawerState extends State<AppDrawer> {
   }
 
   signOut() async {
-    try {
-      await widget.auth.signOut();
       widget.logoutCallback();
-    } catch (e) {
-      print(e);
-    }
   }
 
   Widget _createDrawerItem(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/services/authentication.dart';
+import 'package:flutter_app/services/snackBarText.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ConnectDevicePage extends StatefulWidget {
@@ -23,6 +24,7 @@ class _ConnectDevicePageState extends State<ConnectDevicePage> {
   bool _isLoading;
   bool _obscureTextPassword = true;
   bool _obscureTextPasswordWifi = true;
+  SnackbarText _snackbarText = new SnackbarText();
 
   // Check if form is valid before perform login or signup
   bool validateAndSave() {
@@ -32,26 +34,6 @@ class _ConnectDevicePageState extends State<ConnectDevicePage> {
       return true;
     }
     return false;
-  }
-
-  createDialogGenerateNewPasswordDevice(
-      BuildContext contextScafold, String msg) async {
-    return await showDialog(
-        context: contextScafold,
-        builder: (BuildContext context) {
-          return new AlertDialog(
-            title: Text('Device info'),
-            content: Text(msg),
-            actions: <Widget>[
-              FlatButton(
-                child: Text('Ok'),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-            ],
-          );
-        });
   }
 
   // Perform login or signup
@@ -77,7 +59,7 @@ class _ConnectDevicePageState extends State<ConnectDevicePage> {
               _serverAddressController.text,
               _passwordDeviceController.text);
           if (mounted) {
-          createDialogGenerateNewPasswordDevice(context, deviceMessage);
+          _snackbarText.showSnackBarText(context, deviceMessage);
         setState(() {
           _isLoading = false;
         });
@@ -120,7 +102,6 @@ class _ConnectDevicePageState extends State<ConnectDevicePage> {
     init();
     _errorMessage = "";
     _isLoading = false;
-    // _isLoginForm = true;
     super.initState();
   }
 
@@ -142,12 +123,12 @@ class _ConnectDevicePageState extends State<ConnectDevicePage> {
         appBar: new AppBar(
           title: new Text('SmartHome'),
         ),
-        body: Stack(
+        body: Builder(builder: (context) => Stack(
           children: <Widget>[
             _showForm(context),
             _showCircularProgress(),
           ],
-        ));
+        )));
   }
 
   Widget _showCircularProgress() {

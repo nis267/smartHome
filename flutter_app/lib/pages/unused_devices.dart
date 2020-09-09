@@ -160,10 +160,7 @@ class _UnusedDevicesPageState extends State<UnusedDevicesPage> {
                                             }
                                         });
                               },
-                              label: Text(
-                                  devicesToRemove.length == 1
-                                      ? 'Remove device'
-                                      : 'Remove devices',
+                              label: Text('Remove devices',
                                   style: new TextStyle(
                                       fontSize: 20.0, color: Colors.white)),
                               color: Colors.red,

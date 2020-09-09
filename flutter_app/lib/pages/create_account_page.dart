@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/services/authentication.dart';
 import 'package:flutter_app/services/snackBarText.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class CreateAccountPage extends StatefulWidget {
   CreateAccountPage({this.auth});
@@ -18,6 +19,7 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
   final _usernameController = TextEditingController();
   String _errorMessage;
   bool _isLoading;
+  bool rememberMe = false;
 
   // Check if form is valid before perform login or signup
   bool validateAndSave() {
@@ -51,12 +53,19 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
 
   // Perform login or signup
   void validateAndSubmit(BuildContext context) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
       _errorMessage = "";
       _isLoading = true;
     });
     if (validateAndSave()) {
       try {
+        if (rememberMe == true) {
+          prefs.setStringList('createAccount', [
+            _hostController.text,
+            _usernameController.text,
+          ]);
+        }
         await widget.auth.signUp(_hostController.text, _usernameController.text);
         if (mounted) {
          _snackbarText.showSnackBarText(context, 'Account successfully created');
@@ -69,36 +78,15 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
         setState(() {
           _isLoading = false;
           _errorMessage = e.message;
-          _formKey.currentState.reset();
         });
         }
       }
     }
   }
 
-  // void initLoginCredentials() async {
-  //   SharedPreferences prefs = await SharedPreferences.getInstance();
-  //   bool rememberMeTmp = prefs.getBool('rememberMe');
-  //   if (rememberMeTmp != null) {
-  //     rememberMe = rememberMeTmp;
-  //     if (rememberMe == false) {
-  //       await prefs.remove('login');
-  //     }
-  //   }
-  //   List<String> loginList = prefs.getStringList('login');
-  //   print("loginList: ");
-  //   print(loginList);
-  //   if (loginList != null) {
-  //     _hostController.text = loginList[0];
-  //     _usernameController.text = loginList[1];
-  //     _passwordController.text = loginList[2];
-  //   }
-  //   setState(() {});
-  // }
-
   @override
   void initState() {
-    // initLoginCredentials();
+    initCreateAccountCredentials();
     _errorMessage = "";
     _isLoading = false;
     // _isLoginForm = true;
@@ -152,45 +140,68 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
               showLogo(),
               showHostInput(),
               showUsernameInput(),
-              // showCheckBoxRememberMe(),
+              showErrorMessage(),
+              showCheckBoxRememberMe(),
               showPrimaryButton(context),
               showSecondaryButton(context),
               showthirdButton(context),
-              showErrorMessage(),
             ],
           ),
         ));
   }
 
-  // void _onChangedCheckBoxRememberMe(bool newValue) async {
-  //   SharedPreferences prefs = await SharedPreferences.getInstance();
-  //   rememberMe = newValue;
-  //   setState(() {
-  //     prefs.setBool("rememberMe", rememberMe);
-  //   });
-  // }
+   void initCreateAccountCredentials() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    bool rememberMeTmp = prefs.getBool('rememberMeCreateAccount');
+    if (rememberMeTmp != null) {
+      rememberMe = rememberMeTmp;
+      if (rememberMe == false) {
+        await prefs.remove('createAccount');
+      }
+    }
+    List<String> loginList = prefs.getStringList('createAccount');
+    if (loginList != null) {
+      _hostController.text = loginList[0];
+      _usernameController.text = loginList[1];
+    }
+    setState(() {});
+  }
 
-  // Widget showCheckBoxRememberMe() {
-  //   return Padding(
-  //     padding: const EdgeInsets.fromLTRB(0.0, 15.0, 0.0, 0.0),
-  //     child: new CheckboxListTile(
-  //       title: Text("Remember me"),
-  //       value: rememberMe,
-  //       onChanged: _onChangedCheckBoxRememberMe,
-  //       controlAffinity: ListTileControlAffinity.leading,
-  //     ),
-  //   );
-  // }
+  Widget showCheckBoxRememberMe() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0.0, 15.0, 0.0, 0.0),
+      child: new CheckboxListTile(
+        title: Text("Remember me"),
+        value: rememberMe,
+        onChanged: _onChangedCheckBoxRememberMe,
+        controlAffinity: ListTileControlAffinity.leading,
+      ),
+    );
+  }
 
+  void _onChangedCheckBoxRememberMe(bool newValue) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    rememberMe = newValue;
+    setState(() {
+      prefs.setBool("rememberMeCreateAccount", rememberMe);
+    });
+  }
+  
   Widget showErrorMessage() {
     if (_errorMessage.length > 0 && _errorMessage != null) {
-      return new Text(
+      return Padding(
+      padding: const EdgeInsets.fromLTRB(0.0, 15.0, 0.0, 0.0),
+      child: Center(
+        child: new Text(
         _errorMessage,
+        textAlign: TextAlign.center,
         style: TextStyle(
             fontSize: 13.0,
             color: Colors.red,
             height: 1.0,
             fontWeight: FontWeight.w300),
+      ),
+      )
       );
     } else {
       return new Container(

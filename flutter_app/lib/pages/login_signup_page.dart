@@ -184,13 +184,13 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
               showHostInput(),
               showUsernameInput(),
               showPasswordInput(),
+              showErrorMessage(),
               showForgotPassword(context),
               showCheckBoxRememberMe(),
               // if (_primaryButton == 'Connect device') showConnectDevice(),
               showPrimaryButton(context),
               showSecondaryButton(context),
               showthirdButton(context),
-              showErrorMessage(),
             ],
           ),
         ));
@@ -218,13 +218,19 @@ class _LoginSignupPageState extends State<LoginSignupPage> {
 
   Widget showErrorMessage() {
     if (_errorMessage.length > 0 && _errorMessage != null) {
-      return new Text(
+      return Padding(
+      padding: const EdgeInsets.fromLTRB(0.0, 15.0, 0.0, 0.0),
+      child: Center(
+        child: new Text(
         _errorMessage,
+        textAlign: TextAlign.center,
         style: TextStyle(
             fontSize: 13.0,
             color: Colors.red,
             height: 1.0,
             fontWeight: FontWeight.w300),
+      ),
+      )
       );
     } else {
       return new Container(

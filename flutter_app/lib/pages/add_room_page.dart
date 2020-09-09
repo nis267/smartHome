@@ -1,23 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_app/models/room.dart';
 import 'package:flutter_app/services/snackBarText.dart';
 import 'package:flutter_app/services/socket.dart';
 import 'package:flutter_simple_dependency_injection/injector.dart';
 
-class RoomSettingsPage extends StatefulWidget {
-  RoomSettingsPage({Key key, this.userId, this.room}) : super(key: key);
+class AddRoomPage extends StatefulWidget {
+  AddRoomPage({Key key, this.userId}) : super(key: key);
 
   final int userId;
-  final Room room;
   @override
-  _RoomSettingsPageState createState() => _RoomSettingsPageState();
+  _AddRoomPageState createState() => _AddRoomPageState();
 }
 
-class _RoomSettingsPageState extends State<RoomSettingsPage> {
+class _AddRoomPageState extends State<AddRoomPage> {
   final _formKey = new GlobalKey<FormState>();
   bool _isLoading;
-  Room _newRoom;
-  String _errorMessageNewRoomSettings;
+  String _newRoom;
+  String _errorMessageNewRoom;
   final injector = Injector.getInjector();
   SocketService socketService;
   SnackbarText _snackbarText = new SnackbarText();
@@ -25,8 +23,8 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
   @override
   void initState() {
     _isLoading = false;
-    _newRoom = widget.room;
-    _errorMessageNewRoomSettings = "";
+    _errorMessageNewRoom = "";
+    _newRoom = "";
     socketService = injector.get<SocketService>();
     super.initState();
   }
@@ -35,7 +33,7 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Room settings"),
+        title: Text("Add a room"),
       ),
       body: Builder(
         builder: (context) =>
@@ -80,17 +78,16 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(0.0, 15.0, 0.0, 0.0),
       child: new TextFormField(
-        initialValue: _newRoom.name,
         maxLines: 1,
         keyboardType: TextInputType.text,
         autofocus: false,
         decoration: new InputDecoration(
-          labelText: 'Room name',
+          labelText: 'Name',
         ),
         validator: (value) =>
-          value.isEmpty ? 'Room name can\'t be empty' : _errorMessageNewRoomSettings.isNotEmpty ? _errorMessageNewRoomSettings : null,
-        onChanged: (value) => {
-          _newRoom.name = value.trim(),
+          value.isEmpty ? 'Name can\'t be empty' : _errorMessageNewRoom.isNotEmpty ? _errorMessageNewRoom : null,
+        onSaved: (value) => {
+          _newRoom = value.trim(),
         },
       ),
     );
@@ -108,24 +105,25 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
   void validateAndSubmit(BuildContext context) async {
     FocusScope.of(context).unfocus();
     setState(() {
-      _errorMessageNewRoomSettings = "";
+      _errorMessageNewRoom = "";
       _isLoading = true;
     });
     if (validateAndSave()) {
       try {
-        await socketService.updateRoom(_newRoom);
+        await socketService.addRoom(_newRoom);
         setState(() {
           _isLoading = false;
         });
       } catch (e) {
         setState(() {
           _isLoading = false;
-          _errorMessageNewRoomSettings = e.message;
+          _errorMessageNewRoom = e.message;
         });
       }
       final form = _formKey.currentState;
       if (form.validate()) {
-       Navigator.pop(context, true);
+        _formKey.currentState.reset();
+        Navigator.pop(context, true);
       }
     }
   }

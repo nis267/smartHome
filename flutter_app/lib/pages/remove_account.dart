@@ -1,32 +1,33 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_app/models/room.dart';
+import 'package:flutter_app/models/user.dart';
 import 'package:flutter_app/services/snackBarText.dart';
 import 'package:flutter_app/services/socket.dart';
 import 'package:flutter_simple_dependency_injection/injector.dart';
 
-class RoomSettingsPage extends StatefulWidget {
-  RoomSettingsPage({Key key, this.userId, this.room}) : super(key: key);
+class RemoveAccountPage extends StatefulWidget {
+  RemoveAccountPage({Key key, this.user, this.logoutCallback}) : super(key: key);
 
-  final int userId;
-  final Room room;
+  final User user;
+  final VoidCallback logoutCallback;
   @override
-  _RoomSettingsPageState createState() => _RoomSettingsPageState();
+  _RemoveAccountPageState createState() => _RemoveAccountPageState();
 }
 
-class _RoomSettingsPageState extends State<RoomSettingsPage> {
+class _RemoveAccountPageState extends State<RemoveAccountPage> {
   final _formKey = new GlobalKey<FormState>();
   bool _isLoading;
-  Room _newRoom;
-  String _errorMessageNewRoomSettings;
+  String _errorMessageRemoveAccount;
   final injector = Injector.getInjector();
   SocketService socketService;
   SnackbarText _snackbarText = new SnackbarText();
+  bool _obscureTextPasswordActual = true;
+  String _actualPassword;
   
   @override
   void initState() {
     _isLoading = false;
-    _newRoom = widget.room;
-    _errorMessageNewRoomSettings = "";
+    _errorMessageRemoveAccount = "";
+    _actualPassword = "";
     socketService = injector.get<SocketService>();
     super.initState();
   }
@@ -35,7 +36,7 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Room settings"),
+        title: Text("Remove your account"),
       ),
       body: Builder(
         builder: (context) =>
@@ -57,7 +58,7 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
           child: new Column(
             // shrinkWrap: true,
             children: <Widget>[
-              showRoomNameInput(),
+              showPasswordActualInput(),
               Spacer(),
               showPrimaryButton(context),
             ],
@@ -76,21 +77,32 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
     );
   }
 
-  Widget showRoomNameInput() {
+  Widget showPasswordActualInput() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(0.0, 15.0, 0.0, 0.0),
       child: new TextFormField(
-        initialValue: _newRoom.name,
         maxLines: 1,
+        obscureText: _obscureTextPasswordActual,
         keyboardType: TextInputType.text,
         autofocus: false,
         decoration: new InputDecoration(
-          labelText: 'Room name',
+          labelText: 'Password',
+          suffixIcon:  GestureDetector(
+            onTap: () {
+              setState(() {
+                _obscureTextPasswordActual = !_obscureTextPasswordActual;
+              });
+            },
+            child: Icon(
+              _obscureTextPasswordActual ? Icons.visibility : Icons.visibility_off,
+              semanticLabel: _obscureTextPasswordActual ? 'show password' : 'hide password',
+            ),
+          )
         ),
         validator: (value) =>
-          value.isEmpty ? 'Room name can\'t be empty' : _errorMessageNewRoomSettings.isNotEmpty ? _errorMessageNewRoomSettings : null,
+          value.isEmpty ? 'Password can\'t be empty' : _errorMessageRemoveAccount.isNotEmpty ? _errorMessageRemoveAccount : null,
         onChanged: (value) => {
-          _newRoom.name = value.trim(),
+          _actualPassword = value.trim()
         },
       ),
     );
@@ -108,24 +120,26 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
   void validateAndSubmit(BuildContext context) async {
     FocusScope.of(context).unfocus();
     setState(() {
-      _errorMessageNewRoomSettings = "";
+      _errorMessageRemoveAccount = "";
       _isLoading = true;
     });
     if (validateAndSave()) {
       try {
-        await socketService.updateRoom(_newRoom);
+        await socketService.removeAccount(widget.user.id, _actualPassword);
         setState(() {
           _isLoading = false;
         });
       } catch (e) {
         setState(() {
           _isLoading = false;
-          _errorMessageNewRoomSettings = e.message;
+          _errorMessageRemoveAccount = e.message;
         });
       }
       final form = _formKey.currentState;
       if (form.validate()) {
-       Navigator.pop(context, true);
+        _formKey.currentState.reset();
+        widget.logoutCallback();
+        // Navigator.pop(context, true);
       }
     }
   }
@@ -134,12 +148,16 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
         return new SizedBox(
           width: double.infinity,
           height: 40.0,
-          child: new RaisedButton(
+          child: new RaisedButton.icon(
             elevation: 5.0,
+            icon: Icon(
+                                Icons.delete,
+                                color: Colors.white,
+                              ),
             shape: new RoundedRectangleBorder(
                 borderRadius: new BorderRadius.circular(30.0)),
-            color: Colors.blue,
-            child: new Text("Submit",
+            color: Colors.red,
+            label: new Text("Remove account",
                 style: new TextStyle(fontSize: 20.0, color: Colors.white)),
             onPressed: () {
               validateAndSubmit(context);

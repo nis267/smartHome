@@ -60,11 +60,12 @@ class _RootPageState extends State<RootPage> {
     });
   }
 
-  void logoutCallback() {
+  void logoutCallback() async {
     setState(() {
       authStatus = AuthStatus.NOT_LOGGED_IN;
       globals.user = null;
     });
+    await widget.auth.signOut();
   }
 
   Widget buildWaitingScreen() {

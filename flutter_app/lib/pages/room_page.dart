@@ -8,7 +8,6 @@ import 'package:flutter_app/services/snackBarText.dart';
 import 'package:flutter_simple_dependency_injection/injector.dart';
 import 'package:flutter_app/services/socket.dart';
 import 'dart:async';
-// import 'package:flutter/cupertino.dart';
 
 class RoomPage extends StatefulWidget {
   RoomPage({Key key, this.room}) : super(key: key);
@@ -23,6 +22,7 @@ class _RoomPageState extends State<RoomPage> {
   final injector = Injector.getInjector();
   SocketService socketService;
   SnackbarText _snackbarText = new SnackbarText();
+  final _formKey = new GlobalKey<FormState>();
 
   @override
   void initState() {
@@ -47,8 +47,6 @@ class _RoomPageState extends State<RoomPage> {
     socketService.leaveUserRoom(widget.room.id);
     super.deactivate();
   }
-
-  final _formKey = new GlobalKey<FormState>();
 
   Future<Device> createDialogRemoveDeviceFromRoom(
       BuildContext contextScafold, Device device) async {
@@ -80,111 +78,22 @@ class _RoomPageState extends State<RoomPage> {
         });
   }
 
-  Future<Device> createDialogAddDevice(BuildContext contextScafold) async {
-    Device currentSelectedDevice;
-    return await showDialog(
-        context: contextScafold,
-        builder: (BuildContext context) {
-          return new FutureBuilder(
-              future: socketService.getDeviceFree(),
-              builder: (context, future) {
-                if (future.hasData && future.data.length >= 1) {
-                  return new AlertDialog(
-                    title: Text('Add device'),
-                    content: Column(mainAxisSize: MainAxisSize.min, children: [
-                      new StatefulBuilder(
-                        builder: (BuildContext context, StateSetter setState) {
-                          return SingleChildScrollView(
-                              child: ListTileTheme(
-                                  child: new Container(
-                                      padding: EdgeInsets.all(16.0),
-                                      child: new Form(
-                                          key: _formKey,
-                                          child: new ListBody(
-                                            children: <Widget>[
-                                              new DropdownButtonFormField(
-                                                decoration: new InputDecoration(
-                                                  labelText: 'Select Device',
-                                                ),
-                                                value: currentSelectedDevice,
-                                                onChanged: (Device newValue) {
-                                                  setState(() {
-                                                    currentSelectedDevice =
-                                                        newValue;
-                                                  });
-                                                },
-                                                isExpanded: true,
-                                                items: future.data
-                                                    .map<
-                                                            DropdownMenuItem<
-                                                                Device>>(
-                                                        (Device value) =>
-                                                            DropdownMenuItem<
-                                                                Device>(
-                                                              child: Text(value
-                                                                          .name ==
-                                                                      null
-                                                                  ? value
-                                                                      .macAddress
-                                                                  : value.name),
-                                                              value: value,
-                                                            ))
-                                                    .toList(),
-                                                validator: (value) => value ==
-                                                        null
-                                                    ? 'Device can\'t be empty'
-                                                    : null,
-                                              ),
-                                            ],
-                                          )))));
-                        },
-                      ),
-                    ]),
-                    actions: <Widget>[
-                      FlatButton(
-                        child: Text('Cancel'),
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                        },
-                      ),
-                      FlatButton(
-                        child: Text('Submit'),
-                        onPressed: () {
-                          final form = _formKey.currentState;
-                          if (form.validate()) {
-                            form.save();
-                            Navigator.of(context).pop(currentSelectedDevice);
-                          }
-                        },
-                      ),
-                    ],
-                  );
-                } else if (future.hasData && future.data.length == 0) {
-                  return new AlertDialog(
-                    title: Text('Add device'),
-                    content: Text('No devices available'),
-                    actions: <Widget>[
-                      FlatButton(
-                        child: Text('Ok'),
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                        },
-                      ),
-                    ],
-                  );
-                }
-                return new Center(child: CircularProgressIndicator());
-              });
-        });
+  Widget _showForm(BuildContext context) {
+    return new Container(
+        padding: EdgeInsets.all(16.0),
+        child: new Form(
+            key: _formKey,
+            child: new Column(
+              children: <Widget>[
+                _showDevices(),
+                _showPrimaryButton(context),
+              ],
+            )));
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.room.name),
-      ),
-      body: StreamBuilder<List<Device>>(
+  Widget _showDevices() {
+    return Expanded(
+      child: StreamBuilder<List<Device>>(
           stream: socketService.deviceController.stream,
           builder: (context, stream) {
             if (!stream.hasData)
@@ -203,17 +112,16 @@ class _RoomPageState extends State<RoomPage> {
                                   .checkDeviceExist(device.id);
                               if (deviceExist) {
                                 if (device.socketId != null) {
-                                  socketService
-                                      .sendAction(device.socketId);
-                                      // .then((ack) => {
-                                            _snackbarText.showSnackBarText(
-                                                context,
-                                                (device.name != null ? device.name : device.macAddress) +
-                                                    ' is ' +
-                                                    (value == true
-                                                        ? 'on'
-                                                        : 'off'));
-                                          // });
+                                  socketService.sendAction(device.socketId);
+                                  // .then((ack) => { // TODO
+                                  _snackbarText.showSnackBarText(
+                                      context,
+                                      (device.name != null
+                                              ? device.name
+                                              : device.macAddress) +
+                                          ' is ' +
+                                          (value == true ? 'on' : 'off'));
+                                  // });
                                   setState(() {});
                                 } else {
                                   _snackbarText.showSnackBarText(context,
@@ -262,11 +170,20 @@ class _RoomPageState extends State<RoomPage> {
                             bool deviceExist =
                                 await socketService.checkDeviceExist(device.id);
                             if (deviceExist) {
-                              Navigator.push(context, MaterialPageRoute(builder: (context) => DeviceSettingsPage(device: device, room: widget.room))).then((value) async => {
-                                if (value != null && value == true) {
-                                  _snackbarText.showSnackBarText(context, 'Device updated')
-                                },
-                              });
+                              Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              DeviceSettingsPage(
+                                                  device: device,
+                                                  room: widget.room)))
+                                  .then((value) async => {
+                                        if (value != null && value == true)
+                                          {
+                                            _snackbarText.showSnackBarText(
+                                                context, 'Device updated')
+                                          },
+                                      });
                             } else {
                               _snackbarText.showSnackBarText(
                                   context,
@@ -277,8 +194,7 @@ class _RoomPageState extends State<RoomPage> {
                                       ' not available');
                             }
                           },
-                          title: Text(
-                              device.name == null ? "" : device.name),
+                          title: Text(device.name == null ? "" : device.name),
                           subtitle: Text(device.macAddress),
                           leading: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -291,38 +207,54 @@ class _RoomPageState extends State<RoomPage> {
                               ),
                             ],
                           ),
-                        )
-                        )
-                        )
+                        )))
                     .toList(),
               )),
-              Padding(
-                  padding: const EdgeInsets.fromLTRB(0.0, 15.0, 0.0, 15.0),
-                  child: SizedBox(
-                      height: 40.0,
-                      child: RaisedButton.icon(
-                        elevation: 5.0,
-                        icon: Icon(
-                          Icons.add,
-                          color: Colors.white,
-                        ),
-                        onPressed: () {
-                          Navigator.push(context,
-                          MaterialPageRoute(builder: (context) => AddDevicesPage(room: widget.room,))).then((value) => {
-                            if (value != null && value == true) {
-                              _snackbarText.showSnackBarText(context, 'Room updated'),
-                            }
-                          });
-                        },
-                        label: Text('Add devices',
-                            style: new TextStyle(
-                                fontSize: 20.0, color: Colors.white)),
-                        color: Colors.blue,
-                        shape: new RoundedRectangleBorder(
-                            borderRadius: new BorderRadius.circular(30.0)),
-                      )))
             ]);
           }),
+    );
+  }
+
+  Widget _showPrimaryButton(BuildContext context) {
+    return new SizedBox(
+      width: double.infinity,
+      height: 40.0,
+      child: new RaisedButton(
+          elevation: 5.0,
+          shape: new RoundedRectangleBorder(
+              borderRadius: new BorderRadius.circular(30.0)),
+          color: Colors.blue,
+          child: new Text('Add devices',
+              style: new TextStyle(fontSize: 20.0, color: Colors.white)),
+          onPressed: () {
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => AddDevicesPage(
+                          room: widget.room,
+                        ))).then((value) => {
+                  if (value != null && value == true)
+                    {
+                      _snackbarText.showSnackBarText(context, 'Devices added to room'),
+                    }
+                });
+          }),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.room.name),
+      ),
+      body: Builder(
+        builder: (context) => Stack(
+          children: <Widget>[
+      _showForm(context),
+          ],
+        ),
+      ),
     );
   }
 }

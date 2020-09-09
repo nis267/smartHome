@@ -5,6 +5,7 @@ import 'package:flutter_app/pages/app_drawer.dart';
 import 'package:flutter_app/pages/change_email_page.dart';
 import 'package:flutter_app/pages/change_password_page.dart';
 import 'package:flutter_app/pages/change_username_page.dart';
+import 'package:flutter_app/pages/remove_account.dart';
 import 'package:flutter_app/pages/unused_devices.dart';
 import 'package:flutter_app/services/authentication.dart';
 import 'package:flutter_app/services/snackBarText.dart';
@@ -156,7 +157,14 @@ class _SettingsPageState extends State<SettingsPage> {
                               },
                               });
                           },
-                        )
+                        ),
+                        SettingsTile(
+                          title: 'Remove account',
+                          leading: Icon(Icons.delete, color: Colors.red,),
+                          onTap: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => RemoveAccountPage(user: globals.user, logoutCallback: widget.logoutCallback,)));
+                          },
+                        ),
                       ],
                     ),
                     SettingsSection(
@@ -176,7 +184,6 @@ class _SettingsPageState extends State<SettingsPage> {
                                     context, 'Password copied to clipboard');
                               }
                             });
-                            // _netUtil.post(url)
                           },
                         ),
                         SettingsTile(

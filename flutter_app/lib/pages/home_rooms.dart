@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_app/models/room.dart';
+import 'package:flutter_app/pages/add_room_page.dart';
 import 'package:flutter_app/pages/app_drawer.dart';
 import 'package:flutter_app/pages/room_page.dart';
 import 'package:flutter_app/pages/room_settings_page.dart';
@@ -40,57 +41,6 @@ class _HomeRoomsPageState extends State<HomeRoomsPage> {
   @override
   void dispose() {
     super.dispose();
-  }
-
-  Widget showNameInput() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(0.0, 15.0, 0.0, 0.0),
-      child: new TextFormField(
-        initialValue: this.currentSelectedName,
-        maxLines: 1,
-        keyboardType: TextInputType.text,
-        autofocus: false,
-        decoration: new InputDecoration(
-          labelText: 'Name',
-        ),
-        validator: (value) => value.isEmpty ? 'Name can\'t be empty' : null,
-        onSaved: (value) => {
-          this.currentSelectedName = value.trim(),
-        },
-      ),
-    );
-  }
-
-  Future<String> createDialogAddRoom(BuildContext contextScafold) async {
-    currentSelectedName = null;
-    return await showDialog(
-        context: contextScafold,
-        builder: (BuildContext context) {
-          return new AlertDialog(
-            title: Text("Add room"),
-            content: new Form(key: _formKey, child: showNameInput()),
-            actions: <Widget>[
-              FlatButton(
-                child: Text('Cancel'),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-              FlatButton(
-                child: Text('Submit'),
-                onPressed: () {
-                  final form = _formKey.currentState;
-                  if (form.validate()) {
-                    form.save();
-                    _snackbarText.showSnackBarText(
-                        contextScafold, currentSelectedName + ' added');
-                    Navigator.of(context).pop(currentSelectedName);
-                  }
-                },
-              ),
-            ],
-          );
-        });
   }
 
   Future<Room> createDialogRemoveRoom(
@@ -139,11 +89,9 @@ class _HomeRoomsPageState extends State<HomeRoomsPage> {
         });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text("Home")),
-      body: StreamBuilder(
+  Widget _showRooms() {
+    return Expanded(
+      child: StreamBuilder(
           stream: socketService.streamRooms,
           builder: (context, snapshot) {
             if (snapshot.hasError) return Text(snapshot.error);
@@ -178,7 +126,11 @@ class _HomeRoomsPageState extends State<HomeRoomsPage> {
                                               MaterialPageRoute(
                                                   builder: (context) =>
                                                       RoomSettingsPage(
-                                                          room: room)));
+                                                          room: room))).then((value) => {
+                                                            if (value != null && value == true) {
+                                                              _snackbarText.showSnackBarText(context, 'Room updated')
+                                                            }
+                                                          });
                                         } else {
                                           _snackbarText.showSnackBarText(
                                               context,
@@ -243,37 +195,63 @@ class _HomeRoomsPageState extends State<HomeRoomsPage> {
                                 },
                               ));
                             })),
-                    Padding(
-                        padding:
-                            const EdgeInsets.fromLTRB(0.0, 15.0, 0.0, 15.0),
-                        child: SizedBox(
-                            height: 40.0,
-                            child: RaisedButton.icon(
-                              elevation: 5.0,
-                              icon: Icon(
-                                Icons.add,
-                                color: Colors.white,
-                              ),
-                              onPressed: () {
-                                createDialogAddRoom(context).then((value) => {
-                                      if (value != null)
-                                        {socketService.addRoom(value)}
-                                    });
-                              },
-                              label: Text('Add a room',
-                                  style: new TextStyle(
-                                      fontSize: 20.0, color: Colors.white)),
-                              color: Colors.blue,
-                              shape: new RoundedRectangleBorder(
-                                  borderRadius:
-                                      new BorderRadius.circular(30.0)),
-                            )))
+                    
                   ]));
             }
             return Center(child: CircularProgressIndicator());
-          }),
-      // ),
+          })
+    );
+  }
 
+  Widget _showForm(BuildContext context) {
+    return new Container(
+        padding: EdgeInsets.all(16.0),
+        child: new Form(
+          key: _formKey,
+          child: new Column(
+            // shrinkWrap: true,
+            children: <Widget>[
+              _showRooms(),
+              _showPrimaryButton(context),
+            ],
+          )
+        )
+    );
+  }
+
+  Widget _showPrimaryButton(BuildContext context) {
+    return new SizedBox(
+      width: double.infinity,
+      height: 40.0,
+      child: new RaisedButton(
+        elevation: 5.0,
+        shape: new RoundedRectangleBorder(
+            borderRadius: new BorderRadius.circular(30.0)),
+        color: Colors.blue,
+        child: new Text('Add a room',
+            style: new TextStyle(fontSize: 20.0, color: Colors.white)),
+        onPressed: () {
+          Navigator.push(context, MaterialPageRoute(builder: (context) => AddRoomPage())).then((value) => {
+                                  if (value != null && value == true) {
+                                    _snackbarText.showSnackBarText(context, 'Room added'),
+                                  }
+                                });
+        }
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text("Home")),
+      body: Builder(
+        builder: (context) => Stack(
+          children: <Widget>[
+      _showForm(context),
+          ],
+        ),
+      ),
       drawer: AppDrawer(
         auth: widget.auth,
         logoutCallback: widget.logoutCallback,

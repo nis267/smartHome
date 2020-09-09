@@ -143,8 +143,6 @@ class SocketService {
   }
 
   updateRoom(Room room) {
-    print("here room");
-    print(jsonEncode(room));
     socket.emit('updateRoom', jsonDecode(jsonEncode(room)));
   }
 
@@ -450,6 +448,31 @@ class SocketService {
       body: json.encode(
         {
           "new_email": newEmail,
+        }
+      ),
+    );
+
+    if (response["error"]) {
+      throw new Exception(response["error_msg"]);
+    }
+    if (response.length == 0) return false;
+    return true;
+  }
+
+  Future<bool> removeAccount(int userId, String password) async {
+    final userUrl = "$_url/user/remove/$userId";
+
+    String token = await storage.read(key: 'token');
+    var headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token'
+    };
+    final response = await _netUtil.post(
+      userUrl,
+      headers: headers,
+      body: json.encode(
+        {
+          "password": password,
         }
       ),
     );
