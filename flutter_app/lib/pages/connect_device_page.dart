@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/services/authentication.dart';
-import 'package:flutter_app/services/snackBarText.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ConnectDevicePage extends StatefulWidget {
@@ -24,7 +23,6 @@ class _ConnectDevicePageState extends State<ConnectDevicePage> {
   bool _isLoading;
   bool _obscureTextPassword = true;
   bool _obscureTextPasswordWifi = true;
-  SnackbarText _snackbarText = new SnackbarText();
 
   // Check if form is valid before perform login or signup
   bool validateAndSave() {
@@ -59,13 +57,12 @@ class _ConnectDevicePageState extends State<ConnectDevicePage> {
               _serverAddressController.text,
               _passwordDeviceController.text);
           if (mounted) {
-          _snackbarText.showSnackBarText(context, deviceMessage);
+          Navigator.popAndPushNamed(context, '/');
         setState(() {
           _isLoading = false;
         });
           }
       } catch (e) {
-        print('Error: $e');
         if (mounted) {
         setState(() {
           _isLoading = false;

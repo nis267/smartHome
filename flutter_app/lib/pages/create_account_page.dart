@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/services/authentication.dart';
-import 'package:flutter_app/services/snackBarText.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class CreateAccountPage extends StatefulWidget {
@@ -13,7 +12,6 @@ class CreateAccountPage extends StatefulWidget {
 }
 
 class _CreateAccountPageState extends State<CreateAccountPage> {
-  SnackbarText _snackbarText = new SnackbarText();
   final _formKey = new GlobalKey<FormState>();
   final _hostController = TextEditingController();
   final _usernameController = TextEditingController();
@@ -68,10 +66,10 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
         }
         await widget.auth.signUp(_hostController.text, _usernameController.text);
         if (mounted) {
-         _snackbarText.showSnackBarText(context, 'Account successfully created');
         setState(() {
           _isLoading = false;
         });
+        Navigator.popAndPushNamed(context, '/');
         }
       } catch (e) {
         if (mounted) {
@@ -276,7 +274,6 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
             style: new TextStyle(fontSize: 18.0, fontWeight: FontWeight.w300)),
         onPressed: () {
           Navigator.popAndPushNamed(context, '/');
-          
         });
   }
 
