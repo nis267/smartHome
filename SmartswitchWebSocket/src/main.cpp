@@ -58,6 +58,19 @@ uint8_t red_light_pin = D5;
 uint8_t green_light_pin = D6;
 uint8_t blue_light_pin = D7;
 
+void save_to_eeprom(const char *line)
+{
+  int i = 0;
+
+  while (line[i])
+  {
+    EEPROM.write(i, line[i]);
+    i++;
+  }
+  EEPROM.write(i, 255);
+  EEPROM.commit();
+}
+
 void RGB_color(int red_light_value, int green_light_value, int blue_light_value)
 {
     #ifdef COMMON_ANODE
@@ -119,6 +132,17 @@ void disconnect(const char *payload, size_t length)
 
 }
 
+void deviceRemoved(const char *payload, size_t length)
+{
+  save_to_eeprom("");
+  ESP.restart();
+}
+
+void deviceUpdate(const char *payload, size_t length)
+{
+  
+}
+
 void socket_connection()
 {
   socket.begin(serverAddress.c_str(), serverPort, "/smartHome/devices?transport=websocket", "/devices");
@@ -127,19 +151,8 @@ void socket_connection()
   socket.on("getInit", getInit);
   socket.on("authenticated", authenticated);
   socket.on("disconnect", disconnect);
-}
-
-void save_to_eeprom(const char *line)
-{
-  int i = 0;
-
-  while (line[i])
-  {
-    EEPROM.write(i, line[i]);
-    i++;
-  }
-  EEPROM.write(i, 255);
-  EEPROM.commit();
+  socket.on("deviceRemoved", deviceRemoved);
+  socket.on("deviceUpdate", deviceUpdate);
 }
 
 bool WiFi_login(bool authentication)
