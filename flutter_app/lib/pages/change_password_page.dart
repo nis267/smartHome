@@ -40,7 +40,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Update password"),
+        title: Text("Update your password"),
       ),
       body: Builder(builder: (context) =>
       Stack(
