@@ -6,7 +6,7 @@ import 'package:flutter_app/pages/change_email_page.dart';
 import 'package:flutter_app/pages/change_password_page.dart';
 import 'package:flutter_app/pages/change_username_page.dart';
 import 'package:flutter_app/pages/remove_account.dart';
-import 'package:flutter_app/pages/unused_devices.dart';
+import 'package:flutter_app/pages/remove_devices.dart';
 import 'package:flutter_app/services/authentication.dart';
 import 'package:flutter_app/services/snackBarText.dart';
 import 'package:flutter_app/services/socket.dart';
@@ -187,15 +187,19 @@ class _SettingsPageState extends State<SettingsPage> {
                           },
                         ),
                         SettingsTile(
-                          title: 'Unused devices',
+                          title: 'Remove devices',
                           leading: Icon(Icons.devices),
                           onTap: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => UnusedDevicesPage(),
+                                builder: (context) => RemoveDevicesPage(),
                               ),
-                            );
+                            ).then((value) => {
+                              if (value != null && value == true) {
+                                _snackbarText.showSnackBarText(context, "Devices removed")
+                              }
+                            });
                           },
                         )
                       ],

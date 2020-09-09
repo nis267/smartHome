@@ -203,7 +203,7 @@ class SocketService {
     return devices;
   }
 
-  Future<bool>removeUnusedDevices(ids) async {
+  Future<bool>removeDevices(ids) async {
     final userUrl = "$_url/device/remove";
     print("url: ");
     print(userUrl);
