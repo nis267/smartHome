@@ -421,15 +421,15 @@ app.post('/devices/:roomId', checkToken, async (req, res) => {
   return res.json(devices);
 });
 
-app.post('/device/remove', checkToken, async (req, res) => {
-  const { body } = req;
-  const { devices_ids } = body;
+// app.post('/device/remove', checkToken, async (req, res) => {
+//   const { body } = req;
+//   const { devices_ids } = body;
 
-  console.log("devices_ids: ", devices_ids);
-  const result = await mysqlQuery('DELETE FROM device WHERE id IN(?)', [devices_ids]);
-  console.log("result", result);
-  return res.json(true);
-});
+//   console.log("devices_ids: ", devices_ids);
+//   const result = await mysqlQuery('DELETE FROM device WHERE id IN(?)', [devices_ids]);
+//   console.log("result", result);
+//   return res.json(true);
+// });
 
 app.post('/device/exist/:deviceId', checkToken, async (req, res) => {
   const deviceId = req.params.deviceId;
@@ -635,14 +635,25 @@ const initEngine = (io) => {
       console.log("object: ", object);
       const result = await mysqlQuery('UPDATE device SET room_id = NULL WHERE id = ?', [object.device_id]);
       users_nsp.to(object.room_id).emit('stateChanged', object.room_id);
-    })
+    });
+
+    socket.on('removeDevicesCompletely', async (devices) => {
+      console.log("devices_ids: ", devices);
+      const devices_connected = await mysqlQuery('SELECT * from device WHERE (id IN(?) AND socket_id IS NOT NULL)', [devices.ids]);
+      console.log("devices_connected: ", devices_connected);
+      const result = await mysqlQuery('DELETE FROM device WHERE id IN(?)', [devices.ids]);
+      for (device_connected of devices_connected) {
+        console.log("device_connected: ", device_connected.socket_id);
+        const socket_id_split = device_connected.socket_id.split('#')[1];
+        io.to(socket_id_split).emit('deviceRemoved');
+      }
+    });
 
     socket.on('setUser', async (jwtString) => {
       if (jwtString) {
         let user_id = jwt.decode(jwtString).uid;
         const results = await mysqlQuery(`UPDATE user SET socket_id = ? WHERE id = ?`, [socket.id, user_id]);
         const status = await mysqlQuery('select count(socket_id) connected from user');
-        console.log("results: ", status[0].connected);
         write_to_file(status_dir, users_status_file, String(status[0].connected));
       }
       else {
