@@ -70,6 +70,7 @@ try:
             f.close()
         except IOError:
             print("Users status file not accessible")
+            display.seconde_line = "Connected users: 0"
         try:
             f = open(devices_status_file)
             display.devices_connected_nbr = f.read()
@@ -77,6 +78,7 @@ try:
             f.close()
         except IOError:
             print("Devices status file not accessible")
+            display.third_line = "Connected devices: 0"
 
     def get_default_output():
         get_users_devices_connected()
