@@ -146,6 +146,10 @@ class SocketService {
     socket.emit('updateRoom', jsonDecode(jsonEncode(room)));
   }
 
+  removeDevicesCompletely(List<int> ids) {
+    socket.emit('removeDevicesCompletely', {"ids": ids});
+  }
+
   getDeviceModelDataStream(int roomId) async {
     final userUrl = "$_url/devices/$roomId";
 
@@ -203,30 +207,30 @@ class SocketService {
     return devices;
   }
 
-  Future<bool>removeDevices(ids) async {
-    final userUrl = "$_url/device/remove";
-    print("url: ");
-    print(userUrl);
-    print("ids: ");
-    print(ids);
-    String token = await storage.read(key: 'token');
-    var headers = {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token'
-    };
-    final response = await _netUtil.post(
-      userUrl,
-      headers: headers,
-      body: json.encode(
-        {
-          "devices_ids": ids
-        }
-      ),
-    );
-    print("response: ");
-    print(response);
-    return true;
-  }
+  // Future<bool>removeDevices(List<int> ids) async {
+  //   final userUrl = "$_url/device/remove";
+  //   print("url: ");
+  //   print(userUrl);
+  //   print("ids: ");
+  //   print(ids);
+  //   String token = await storage.read(key: 'token');
+  //   var headers = {
+  //     'Content-Type': 'application/json',
+  //     'Authorization': 'Bearer $token'
+  //   };
+  //   final response = await _netUtil.post(
+  //     userUrl,
+  //     headers: headers,
+  //     body: json.encode(
+  //       {
+  //         "devices_ids": ids
+  //       }
+  //     ),
+  //   );
+  //   print("response: ");
+  //   print(response);
+  //   return true;
+  // }
 
   Future <String>getDeviceNewPassword() async {
     final userUrl = "$_url/device/signup";

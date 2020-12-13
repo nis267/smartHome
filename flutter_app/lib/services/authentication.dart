@@ -212,7 +212,6 @@ class Auth implements BaseAuth {
     final SocketService socketService = injector.get<SocketService>();
     storage.delete(key: 'token');
     socketService.closeSocketConnection();
-    // return _firebaseAuth.signOut();
   }
 
   Future<void> sendEmailVerification() async {

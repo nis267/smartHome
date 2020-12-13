@@ -186,7 +186,7 @@ class _RemoveDevicesPageState extends State<RemoveDevicesPage> {
       _isLoading = true;
     });
     if (validateAndSave()) {
-      await socketService.removeDevices(devicesToRemove);
+      await socketService.removeDevicesCompletely(devicesToRemove);
       setState(() {
         _isLoading = false;
       });
