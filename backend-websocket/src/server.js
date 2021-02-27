@@ -1,3 +1,4 @@
+require('log-timestamp');
 var express = require('express');
 var SocketIO = require('socket.io');
 var connection = require('./db.js');
@@ -9,8 +10,7 @@ var generator = require('generate-password');
 var fs = require('fs');
 var shell = require('shelljs');
 var validator = require("email-validator");
-var nodemailer = require('nodemailer'); 
-
+var nodemailer = require('nodemailer');
 const secret_user = 'smarthome_user';
 const secret_device = 'smarthome_device';
 const saltRounds = 10;
@@ -22,8 +22,12 @@ const users_status_file = 'users';
 const devices_status_file = 'devices';
 const account_active_timeout = 600000;
 
+console.log('Server starting ...');
 let app = express();
 var server = app.listen(port);
+app.use(express.json());
+
+app.use(express.urlencoded({ extended: true }))
 
 const send_hangup_to_python_script_display = () => {
   try {
@@ -51,14 +55,8 @@ const write_to_file = (dir, file, data) => {
   send_hangup_to_python_script_display();
 }
 
-console.log('Server starting ...');
-app.use(express.json());
-
-app.use(express.urlencoded({ extended: true }))
-
 //Check to make sure header is not undefined, if so, return Forbidden (403)
 const checkToken = async (req, res, next, secret) => {
-  console.log("here checktoken");
   const header = req.headers['authorization'];
 
   if (typeof header !== 'undefined') {
@@ -166,15 +164,18 @@ app.post('/login_device', async (req, res) => {
   if (device.length) {
     const check = await bcrypt.compareSync(password, device[0].password);
     if (!check) {
+      console.log('Wrong credentials');
       return res.json({ error: true, error_msg: 'Wrong credentials' });
     }
   } else {
     device = await mysqlQuery('SELECT * FROM device WHERE (mac_address IS NULL AND password IS NOT NULL) LIMIT 1');
     if (!device.length) {
+      console.log('No password available');
       return res.json({ error: true, error_msg: 'No password available' });
     }
     const check = await bcrypt.compareSync(password, device[0].password);
     if (!check) {
+      console.log('Wrong credentials');
       return res.json({ error: true, error_msg: 'Wrong credentials' });
     }
     const results = await mysqlQuery(`UPDATE device SET mac_address = ? WHERE id = ?`, [mac_address_modified, device[0].id]);
